@@ -83,10 +83,23 @@ HAPI uses intelligent caching:
 
 ## Notifications
 
-::: warning Work in Progress
-Push notifications are planned for a future release. Currently, notifications work through:
-- Telegram bot (recommended)
-- Keeping the app open in background
+HAPI supports push notifications to alert you when agents need attention.
+
+### Enable Notifications
+
+1. Open HAPI - a permission popup appears automatically
+2. Tap **Allow** to enable notifications
+3. If you missed the popup, go to system settings to grant permission
+
+### Notification Types
+
+| Type | When Sent |
+|------|-----------|
+| Permission Request | Agent needs your approval |
+| Ready | Agent finished and awaits input |
+
+::: tip
+If push notifications don't work in your region (e.g., FCM unavailable), use [Telegram integration](/guide/installation#telegram-setup) instead.
 :::
 
 ## Managing Your PWA

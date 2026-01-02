@@ -63,6 +63,13 @@ Yes. Telegram is optional. You can use the web app directly in any browser or in
 3. Navigate to the active session
 4. Approve or deny the pending permission
 
+### How do I receive notifications?
+
+HAPI supports two methods:
+
+1. **PWA Push Notifications** - Enable when prompted, works even when app is closed
+2. **Telegram Bot** - See [Telegram Setup](/guide/installation#telegram-setup)
+
 ### Can I start sessions remotely?
 
 Yes, with daemon mode:
