@@ -31,7 +31,10 @@ Short guide for AI agents in this repo. Prefer progressive loading: start with t
 ## Key source dirs
 - `cli/src/api/`, `cli/src/claude/`, `cli/src/commands/`, `cli/src/codex/`
 - `hub/src/web/`, `hub/src/socket/`, `hub/src/telegram/`, `hub/src/sync/`
+- `hub/src/socket/handlers/cli/` - Terminal multiplexing, session handlers
+- `hub/src/notifications/` - Push and Telegram notifications
 - `web/src/components/`, `web/src/api/`, `web/src/hooks/`
+- `web/src/routes/sessions/terminal.tsx` - Terminal UI
 
 ## Critical Thinking
 
