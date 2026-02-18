@@ -42,6 +42,11 @@ describe('useTheme', () => {
     beforeEach(() => {
         localStorage.clear()
         document.documentElement.removeAttribute('data-theme')
+        const { mediaQuery } = createMatchMediaStub(false)
+        Object.defineProperty(window, 'matchMedia', {
+            writable: true,
+            value: vi.fn(() => mediaQuery)
+        })
     })
 
     it('initializeTheme applies stored theme preference', () => {
@@ -70,6 +75,21 @@ describe('useTheme', () => {
         expect(document.documentElement.getAttribute('data-theme')).toBe('gaius-dark')
     })
 
+    it('initializeTheme keeps system theme reactive without mounted hook', () => {
+        const { mediaQuery, setDark } = createMatchMediaStub(false)
+        Object.defineProperty(window, 'matchMedia', {
+            writable: true,
+            value: vi.fn(() => mediaQuery)
+        })
+        localStorage.removeItem('hapi-theme')
+
+        initializeTheme()
+        expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+
+        act(() => setDark(true))
+        expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    })
+
     it('persists and clears theme preference from hook setter', () => {
         const { mediaQuery } = createMatchMediaStub(false)
         Object.defineProperty(window, 'matchMedia', {
@@ -94,10 +114,26 @@ describe('useTheme', () => {
         })
         localStorage.setItem('hapi-theme', 'gaius')
 
+        initializeTheme()
         renderHook(() => useTheme())
         expect(document.documentElement.getAttribute('data-theme')).toBe('gaius-light')
 
         act(() => setDark(true))
         expect(document.documentElement.getAttribute('data-theme')).toBe('gaius-dark')
+    })
+
+    it('shares theme preference state across hook consumers', () => {
+        const { mediaQuery } = createMatchMediaStub(false)
+        Object.defineProperty(window, 'matchMedia', {
+            writable: true,
+            value: vi.fn(() => mediaQuery)
+        })
+        initializeTheme()
+
+        const first = renderHook(() => useTheme())
+        const second = renderHook(() => useTheme())
+
+        act(() => first.result.current.setThemePreference('dark'))
+        expect(second.result.current.themePreference).toBe('dark')
     })
 })
