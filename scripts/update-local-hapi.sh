@@ -67,7 +67,7 @@ git fetch "${UPSTREAM_REMOTE}" "${MAIN_BRANCH}"
 git fetch "${FORK_REMOTE}" "${MAIN_BRANCH}" || true
 
 echo "==> merge upstream changes"
-git merge --ff-only "${UPSTREAM_REMOTE}/${MAIN_BRANCH}"
+git merge "${UPSTREAM_REMOTE}/${MAIN_BRANCH}"
 
 echo "==> install dependencies"
 bun install
