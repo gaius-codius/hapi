@@ -8,8 +8,8 @@ export const SessionSortModeSchema = z.enum(['auto', 'manual'])
 export type SessionSortMode = z.infer<typeof SessionSortModeSchema>
 
 export const SessionManualOrderSchema = z.object({
-    groupOrder: z.array(z.string()),
-    sessionOrder: z.record(z.string(), z.array(z.string()))
+    groupOrder: z.array(z.string().max(256)).max(500),
+    sessionOrder: z.record(z.string().max(256), z.array(z.string().max(128)).max(200))
 }).strict()
 
 export type SessionManualOrder = z.infer<typeof SessionManualOrderSchema>

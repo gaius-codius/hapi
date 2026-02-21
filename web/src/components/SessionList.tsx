@@ -5,19 +5,12 @@ import { getPermissionModeLabel, getPermissionModeTone, isPermissionModeAllowedF
 import { useLongPress } from '@/hooks/useLongPress'
 import { usePlatform } from '@/hooks/usePlatform'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
-import { useSessionSortPreferenceMutation } from '@/hooks/mutations/useSessionSortPreference'
-import { useSessionSortPreference } from '@/hooks/queries/useSessionSortPreference'
+import { useSortToggle } from '@/hooks/useSortToggle'
+import { SortIcon, PinIcon } from '@/components/icons/SortIcons'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { GroupActionMenu } from '@/components/GroupActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import {
-    applyManualOrder,
-    moveGroup,
-    moveSession,
-    reconcileManualOrder,
-    snapshotManualOrder
-} from '@/lib/sessionSortOrder'
 import { useTranslation } from '@/lib/use-translation'
 import { getFlavorTextClass, PERMISSION_TONE_TEXT } from '@/lib/agentFlavorUtils'
 
@@ -105,51 +98,6 @@ function PlusIcon(props: { className?: string }) {
         >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-    )
-}
-
-function SortIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="M11 5h10" />
-            <path d="M11 9h7" />
-            <path d="M11 13h4" />
-            <path d="m3 17 3 3 3-3" />
-            <path d="M6 4v16" />
-        </svg>
-    )
-}
-
-function PinIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="M12 17v5" />
-            <path d="m7 6 10 0-3 5v3l-4 0v-3Z" />
-            <path d="m5 6 2-2" />
-            <path d="m17 6 2-2" />
         </svg>
     )
 }
@@ -517,75 +465,24 @@ export function SessionList(props: {
 }) {
     const { t } = useTranslation()
     const { renderHeader = true, api, selectedSessionId, machineLabelsById = {} } = props
-    const { preference } = useSessionSortPreference(api)
-    const { setSessionSortPreference, isPending: isSortPreferencePending } = useSessionSortPreferenceMutation(api)
-    const sortMode = preference.sortMode
     const groups = useMemo(
         () => groupSessionsByDirectory(props.sessions),
         [props.sessions]
     )
-    const reconciledManualOrder = useMemo(
-        () => reconcileManualOrder(groups, preference.manualOrder),
-        [groups, preference.manualOrder]
-    )
-    const orderedGroups = useMemo(
-        () => (sortMode === 'manual' ? applyManualOrder(groups, reconciledManualOrder) : groups),
-        [groups, reconciledManualOrder, sortMode]
-    )
+    const {
+        sortMode,
+        orderedGroups,
+        isSortPreferencePending,
+        toggleSortMode,
+        moveGroupInPreference,
+        moveSessionInPreference
+    } = useSortToggle(api, groups)
     const [collapseOverrides, setCollapseOverrides] = useState<Map<string, boolean>>(
         () => new Map()
     )
     const [groupMenuOpen, setGroupMenuOpen] = useState(false)
     const [groupMenuAnchor, setGroupMenuAnchor] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
     const [groupMenuKey, setGroupMenuKey] = useState<string | null>(null)
-
-    const persistSortPreference = (nextSortMode: 'auto' | 'manual', nextManualOrder = reconciledManualOrder) => {
-        if (!api) {
-            return
-        }
-
-        void setSessionSortPreference({
-            sortMode: nextSortMode,
-            manualOrder: nextManualOrder,
-            expectedVersion: preference.version
-        }).catch((error) => {
-            console.error('Failed to persist session sort preference:', error)
-        })
-    }
-
-    const toggleSortMode = () => {
-        if (sortMode === 'auto') {
-            const snapshot = snapshotManualOrder(groups)
-            persistSortPreference('manual', snapshot)
-            return
-        }
-
-        persistSortPreference('auto', reconciledManualOrder)
-    }
-
-    const moveGroupInPreference = (groupKey: string, direction: 'up' | 'down') => {
-        if (sortMode !== 'manual') {
-            return
-        }
-        const normalized = reconcileManualOrder(orderedGroups, preference.manualOrder)
-        const nextManualOrder = moveGroup(normalized, groupKey, direction)
-        if (nextManualOrder === normalized) {
-            return
-        }
-        persistSortPreference('manual', nextManualOrder)
-    }
-
-    const moveSessionInPreference = (groupKey: string, sessionId: string, direction: 'up' | 'down') => {
-        if (sortMode !== 'manual') {
-            return
-        }
-        const normalized = reconcileManualOrder(orderedGroups, preference.manualOrder)
-        const nextManualOrder = moveSession(normalized, groupKey, sessionId, direction)
-        if (nextManualOrder === normalized) {
-            return
-        }
-        persistSortPreference('manual', nextManualOrder)
-    }
 
     const openGroupActionMenu = (groupKey: string, point: { x: number; y: number }) => {
         setGroupMenuKey(groupKey)

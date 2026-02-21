@@ -8,6 +8,7 @@ import {
     type CSSProperties
 } from 'react'
 
+import { ArrowUpIcon, ArrowDownIcon } from '@/components/icons/SortIcons'
 import { useTranslation } from '@/lib/use-translation'
 
 type GroupActionMenuProps = {
@@ -25,46 +26,6 @@ type MenuPosition = {
     top: number
     left: number
     transformOrigin: string
-}
-
-function ArrowUpIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="m5 12 7-7 7 7" />
-            <path d="M12 19V6" />
-        </svg>
-    )
-}
-
-function ArrowDownIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="m19 12-7 7-7-7" />
-            <path d="M12 5v13" />
-        </svg>
-    )
 }
 
 export function GroupActionMenu(props: GroupActionMenuProps) {
@@ -129,6 +90,19 @@ export function GroupActionMenu(props: GroupActionMenuProps) {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 onClose()
+                return
+            }
+
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                const items = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')
+                if (!items || items.length === 0) return
+                const current = document.activeElement as HTMLElement
+                const index = Array.from(items).indexOf(current)
+                const next = event.key === 'ArrowDown'
+                    ? items[(index + 1) % items.length]
+                    : items[(index - 1 + items.length) % items.length]
+                next?.focus()
             }
         }
 
@@ -153,7 +127,7 @@ export function GroupActionMenu(props: GroupActionMenuProps) {
         if (!isOpen) return
 
         const frame = window.requestAnimationFrame(() => {
-            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
+            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
             firstItem?.focus()
         })
 

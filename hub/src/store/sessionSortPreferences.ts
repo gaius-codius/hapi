@@ -137,7 +137,8 @@ export function upsertSessionSortPreferenceByUser(
             result: 'success',
             preference: updated
         }
-    } catch {
+    } catch (error) {
+        console.error('Failed to upsert session sort preference:', error)
         return {
             result: 'error'
         }
