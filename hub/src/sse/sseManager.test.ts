@@ -126,6 +126,7 @@ describe('SSEManager namespace filtering', () => {
         manager.subscribe({
             id: 'alpha-session',
             namespace: 'alpha',
+            userId: 1,
             all: false,
             sessionId: 'session-1',
             send: (event) => {
@@ -145,5 +146,45 @@ describe('SSEManager namespace filtering', () => {
 
         expect(received).toHaveLength(1)
         expect(received[0]?.type).toBe('session-sort-preference-updated')
+    })
+
+    it('filters session sort preference updates by userId', () => {
+        const manager = new SSEManager(0, new VisibilityTracker())
+        const receivedUser1: SyncEvent[] = []
+        const receivedUser2: SyncEvent[] = []
+
+        manager.subscribe({
+            id: 'user1-conn',
+            namespace: 'alpha',
+            userId: 1,
+            all: true,
+            send: (event) => {
+                receivedUser1.push(event)
+            },
+            sendHeartbeat: () => {}
+        })
+
+        manager.subscribe({
+            id: 'user2-conn',
+            namespace: 'alpha',
+            userId: 2,
+            all: true,
+            send: (event) => {
+                receivedUser2.push(event)
+            },
+            sendHeartbeat: () => {}
+        })
+
+        manager.broadcast({
+            type: 'session-sort-preference-updated',
+            namespace: 'alpha',
+            data: {
+                userId: 1,
+                version: 3
+            }
+        })
+
+        expect(receivedUser1).toHaveLength(1)
+        expect(receivedUser2).toHaveLength(0)
     })
 })

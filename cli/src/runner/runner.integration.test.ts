@@ -139,9 +139,11 @@ describe.skipIf(!await isServerHealthy())('Runner Integration Tests', { timeout:
   });
 
   afterAll(async () => {
-    // Make sure the test runner is dead before restoring
-    await stopRunner();
-    uninstallTestHapiHome(savedOriginals);
+    try {
+      await stopRunner();
+    } finally {
+      uninstallTestHapiHome(savedOriginals);
+    }
   });
 
   beforeEach(async () => {

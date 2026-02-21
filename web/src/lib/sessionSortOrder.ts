@@ -11,13 +11,6 @@ type SortableGroup<TSession extends SortableSession = SortableSession> = {
     sessions: TSession[]
 }
 
-export function createEmptyManualOrder(): SessionManualOrder {
-    return {
-        groupOrder: [],
-        sessionOrder: {}
-    }
-}
-
 export function snapshotManualOrder<TSession extends SortableSession, TGroup extends SortableGroup<TSession>>(
     groups: TGroup[]
 ): SessionManualOrder {
@@ -66,10 +59,9 @@ export function reconcileManualOrder<TSession extends SortableSession, TGroup ex
 
 export function applyManualOrder<TSession extends SortableSession, TGroup extends SortableGroup<TSession>>(
     groups: TGroup[],
-    manualOrder: SessionManualOrder
+    reconciledOrder: SessionManualOrder
 ): TGroup[] {
-    const reconciled = reconcileManualOrder(groups, manualOrder)
-    const groupIndex = new Map(reconciled.groupOrder.map((groupKey, index) => [groupKey, index]))
+    const groupIndex = new Map(reconciledOrder.groupOrder.map((groupKey, index) => [groupKey, index]))
 
     return [...groups]
         .sort((groupA, groupB) => {
@@ -78,7 +70,7 @@ export function applyManualOrder<TSession extends SortableSession, TGroup extend
             return indexA - indexB
         })
         .map((group) => {
-            const order = reconciled.sessionOrder[group.key] ?? []
+            const order = reconciledOrder.sessionOrder[group.key] ?? []
             const sessionIndex = new Map(order.map((sessionId, index) => [sessionId, index]))
             const sessions = [...group.sessions].sort((sessionA, sessionB) => {
                 const indexA = sessionIndex.get(sessionA.id) ?? Number.MAX_SAFE_INTEGER

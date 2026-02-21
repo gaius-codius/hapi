@@ -7,6 +7,7 @@ import {
     useState,
     type CSSProperties
 } from 'react'
+import { ArrowUpIcon, ArrowDownIcon } from '@/components/icons/SortIcons'
 import { useTranslation } from '@/lib/use-translation'
 
 type SessionActionMenuProps = {
@@ -85,46 +86,6 @@ function TrashIcon(props: { className?: string }) {
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
             <line x1="10" x2="10" y1="11" y2="17" />
             <line x1="14" x2="14" y1="11" y2="17" />
-        </svg>
-    )
-}
-
-function ArrowUpIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="m5 12 7-7 7 7" />
-            <path d="M12 19V6" />
-        </svg>
-    )
-}
-
-function ArrowDownIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="m19 12-7 7-7-7" />
-            <path d="M12 5v13" />
         </svg>
     )
 }
@@ -257,7 +218,7 @@ export function SessionActionMenu(props: SessionActionMenuProps) {
         if (!isOpen) return
 
         const frame = window.requestAnimationFrame(() => {
-            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
+            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
             firstItem?.focus()
         })
 
