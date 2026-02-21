@@ -87,18 +87,12 @@ export function upsertSessionSortPreferenceByUser(
 ): SessionSortPreferenceUpdateResult {
     try {
         const current = getSessionSortPreferenceByUser(db, userId, namespace)
-        if (expectedVersion !== undefined && expectedVersion !== current.version) {
-            return {
-                result: 'version-mismatch',
-                preference: current
-            }
-        }
-
         const now = Date.now()
-        const nextVersion = current.version + 1
+        const baseVersion = expectedVersion ?? current.version
+        const nextVersion = baseVersion + 1
         const manualOrderJson = JSON.stringify(preference.manualOrder)
 
-        db.prepare(`
+        const info = db.prepare(`
             INSERT INTO session_sort_preferences (
                 user_id,
                 namespace,
@@ -107,7 +101,8 @@ export function upsertSessionSortPreferenceByUser(
                 version,
                 created_at,
                 updated_at
-            ) VALUES (
+            )
+            SELECT
                 @user_id,
                 @namespace,
                 @sort_mode,
@@ -115,13 +110,16 @@ export function upsertSessionSortPreferenceByUser(
                 @version,
                 @created_at,
                 @updated_at
-            )
+            WHERE @expected_version IS NULL
+               OR @expected_version = 1
             ON CONFLICT(user_id, namespace)
             DO UPDATE SET
                 sort_mode = excluded.sort_mode,
                 manual_order = excluded.manual_order,
                 version = excluded.version,
                 updated_at = excluded.updated_at
+            WHERE @expected_version IS NULL
+               OR session_sort_preferences.version = @expected_version
         `).run({
             user_id: userId,
             namespace,
@@ -129,8 +127,16 @@ export function upsertSessionSortPreferenceByUser(
             manual_order: manualOrderJson,
             version: nextVersion,
             created_at: current.createdAt || now,
-            updated_at: now
+            updated_at: now,
+            expected_version: expectedVersion ?? null
         })
+
+        if (expectedVersion !== undefined && info.changes === 0) {
+            return {
+                result: 'version-mismatch',
+                preference: getSessionSortPreferenceByUser(db, userId, namespace)
+            }
+        }
 
         const updated = getSessionSortPreferenceByUser(db, userId, namespace)
         return {
