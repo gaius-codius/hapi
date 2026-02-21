@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-router'
 import { App } from '@/App'
 import { SessionChat } from '@/components/SessionChat'
-import { SessionList } from '@/components/SessionList'
+import { SessionList, groupSessionsByDirectory } from '@/components/SessionList'
 import { NewSession } from '@/components/NewSession'
 import { LoadingState } from '@/components/LoadingState'
 import { useAppContext } from '@/lib/app-context'
@@ -23,9 +23,12 @@ import { useMessages } from '@/hooks/queries/useMessages'
 import { useMachines } from '@/hooks/queries/useMachines'
 import { useSession } from '@/hooks/queries/useSession'
 import { useSessions } from '@/hooks/queries/useSessions'
+import { useSessionSortPreference } from '@/hooks/queries/useSessionSortPreference'
 import { useSlashCommands } from '@/hooks/queries/useSlashCommands'
 import { useSkills } from '@/hooks/queries/useSkills'
 import { useSendMessage } from '@/hooks/mutations/useSendMessage'
+import { useSessionSortPreferenceMutation } from '@/hooks/mutations/useSessionSortPreference'
+import { snapshotManualOrder } from '@/lib/sessionSortOrder'
 import { queryKeys } from '@/lib/query-keys'
 import { useToast } from '@/lib/toast-context'
 import { useTranslation } from '@/lib/use-translation'
@@ -75,6 +78,51 @@ function PlusIcon(props: { className?: string }) {
     )
 }
 
+function SortIcon(props: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={props.className}
+        >
+            <path d="M11 5h10" />
+            <path d="M11 9h7" />
+            <path d="M11 13h4" />
+            <path d="m3 17 3 3 3-3" />
+            <path d="M6 4v16" />
+        </svg>
+    )
+}
+
+function PinIcon(props: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={props.className}
+        >
+            <path d="M12 17v5" />
+            <path d="m7 6 10 0-3 5v3l-4 0v-3Z" />
+            <path d="m5 6 2-2" />
+            <path d="m17 6 2-2" />
+        </svg>
+    )
+}
+
 function SettingsIcon(props: { className?: string }) {
     return (
         <svg
@@ -108,6 +156,8 @@ function SessionsPage() {
     const matchRoute = useMatchRoute()
     const { t } = useTranslation()
     const { sessions, isLoading, error, refetch } = useSessions(api)
+    const { preference } = useSessionSortPreference(api)
+    const { setSessionSortPreference, isPending: isSortPreferencePending } = useSessionSortPreferenceMutation(api)
     const { machines } = useMachines(api, true)
 
     const handleRefresh = useCallback(() => {
@@ -119,6 +169,7 @@ function SessionsPage() {
         const machineId = s.metadata?.machineId ?? '__unknown__'
         return `${machineId}::${path}`
     })).size
+    const groups = useMemo(() => groupSessionsByDirectory(sessions), [sessions])
     const machineLabelsById = useMemo(() => {
         const labels: Record<string, string> = {}
         for (const machine of machines) {
@@ -126,6 +177,26 @@ function SessionsPage() {
         }
         return labels
     }, [machines])
+    const handleToggleSortMode = useCallback(() => {
+        if (!api) {
+            return
+        }
+
+        if (preference.sortMode === 'auto') {
+            void setSessionSortPreference({
+                sortMode: 'manual',
+                manualOrder: snapshotManualOrder(groups),
+                expectedVersion: preference.version
+            })
+            return
+        }
+
+        void setSessionSortPreference({
+            sortMode: 'auto',
+            manualOrder: preference.manualOrder,
+            expectedVersion: preference.version
+        })
+    }, [api, groups, preference.manualOrder, preference.sortMode, preference.version, setSessionSortPreference])
     const sessionMatch = matchRoute({ to: '/sessions/$sessionId', fuzzy: true })
     const selectedSessionId = sessionMatch && sessionMatch.sessionId !== 'new' ? sessionMatch.sessionId : null
     const isSessionsIndex = pathname === '/sessions' || pathname === '/sessions/'
@@ -148,6 +219,18 @@ function SessionsPage() {
                                 title={t('settings.title')}
                             >
                                 <SettingsIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleToggleSortMode}
+                                className="p-1.5 rounded-full text-[var(--app-hint)] hover:text-[var(--app-link)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={t(preference.sortMode === 'auto' ? 'sessions.sort.auto' : 'sessions.sort.manual')}
+                                aria-pressed={preference.sortMode === 'manual'}
+                                disabled={isSortPreferencePending}
+                            >
+                                {preference.sortMode === 'auto'
+                                    ? <SortIcon className="h-4 w-4" />
+                                    : <PinIcon className="h-4 w-4" />}
                             </button>
                             <button
                                 type="button"
