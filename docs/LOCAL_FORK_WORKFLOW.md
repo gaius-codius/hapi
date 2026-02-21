@@ -9,13 +9,13 @@ Current remote layout in this repo:
 
 ---
 
-## 1) One-time switch from RPM to your local fork build
+## 1) One-time switch from global npm package to your local fork build
 
 ```bash
 # from anywhere
 which hapi
-rpm -qf "$(which hapi)"
-sudo dnf remove hapi     # or: sudo rpm -e <exact-package-name>
+npm list -g @twsxtd/hapi
+npm uninstall -g @twsxtd/hapi
 hash -r
 
 # from repo root
@@ -47,7 +47,8 @@ source ~/.bashrc
 ```bash
 cd /home/gretus/code/hapi
 git checkout main
-git fetch origin fork
+git fetch origin
+git fetch fork
 git merge origin/main
 bun install
 bun run build:single-exe
@@ -110,3 +111,4 @@ which hapi
 hapi --version
 ```
 
+Going forward, run ./scripts/update-local-hapi.sh from the repo root to pull upstream changes, rebuild, and reinstall.
