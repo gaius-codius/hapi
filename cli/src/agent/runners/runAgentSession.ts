@@ -149,8 +149,7 @@ export async function runAgentSession(opts: {
                         session.sendCodexMessage(converted);
                     }
                 });
-                const maybeSessionIdProvider = backend as { getActiveSessionId?: () => string | null };
-                const activeSessionId = maybeSessionIdProvider.getActiveSessionId?.();
+                const activeSessionId = backend.getActiveSessionId?.()
                 if (activeSessionId) {
                     applyBackendSessionIdToMetadata(activeSessionId);
                 }

@@ -62,6 +62,7 @@ export interface AgentBackend {
     cancelPrompt(sessionId: string): Promise<void>;
     respondToPermission(sessionId: string, request: PermissionRequest, response: PermissionResponse): Promise<void>;
     onPermissionRequest(handler: (request: PermissionRequest) => void): void;
+    getActiveSessionId?(): string | null;
     disconnect(): Promise<void>;
 }
 

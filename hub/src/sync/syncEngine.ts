@@ -409,15 +409,24 @@ export class SyncEngine {
             || metadata.flavor === 'cursor'
             ? metadata.flavor
             : 'claude'
-        const resumeToken = flavor === 'codex'
-            ? metadata.codexSessionId
-            : flavor === 'gemini'
-                ? metadata.geminiSessionId
-                : flavor === 'opencode'
-                    ? metadata.opencodeSessionId
-                    : flavor === 'cursor'
-                        ? metadata.cursorSessionId
-                    : metadata.claudeSessionId
+        let resumeToken: string | undefined
+        switch (flavor) {
+            case 'codex':
+                resumeToken = metadata.codexSessionId
+                break
+            case 'gemini':
+                resumeToken = metadata.geminiSessionId
+                break
+            case 'opencode':
+                resumeToken = metadata.opencodeSessionId
+                break
+            case 'cursor':
+                resumeToken = metadata.cursorSessionId
+                break
+            default:
+                resumeToken = metadata.claudeSessionId
+                break
+        }
 
         if (!resumeToken) {
             return { type: 'error', message: 'Resume session ID unavailable', code: 'resume_unavailable' }

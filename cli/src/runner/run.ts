@@ -323,16 +323,17 @@ export async function startRunner(): Promise<void> {
         }
 
         // Construct arguments for the CLI
-        const agentCommand = agent === 'codex'
-          ? 'codex'
-          : agent === 'cursor'
-            ? 'cursor'
-          : agent === 'gemini'
-            ? 'gemini'
-            : agent === 'opencode'
-              ? 'opencode'
-              : 'claude';
-        const args = [agentCommand];
+        let agentCommand: 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor' = 'claude';
+        if (agent === 'codex') {
+          agentCommand = 'codex';
+        } else if (agent === 'cursor') {
+          agentCommand = 'cursor';
+        } else if (agent === 'gemini') {
+          agentCommand = 'gemini';
+        } else if (agent === 'opencode') {
+          agentCommand = 'opencode';
+        }
+        const args: string[] = [agentCommand];
         if (options.resumeSessionId) {
             if (agent === 'codex') {
                 args.push('resume', options.resumeSessionId);

@@ -10,6 +10,7 @@ export type GeminiPermissionMode = typeof GEMINI_PERMISSION_MODES[number]
 export const OPENCODE_PERMISSION_MODES = ['default', 'yolo'] as const
 export type OpencodePermissionMode = typeof OPENCODE_PERMISSION_MODES[number]
 
+// Cursor CLI print mode does not expose a runtime permission mode toggle.
 export const CURSOR_PERMISSION_MODES = [] as const
 export type CursorPermissionMode = typeof CURSOR_PERMISSION_MODES[number]
 

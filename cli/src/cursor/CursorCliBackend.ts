@@ -14,7 +14,6 @@ import type {
 type CursorCliBackendOptions = {
     model?: string;
     resumeSessionId?: string;
-    forceWrites?: boolean;
     extraArgs?: string[];
 };
 
@@ -26,7 +25,6 @@ type StreamEvent = {
     tool_call?: unknown;
     message?: unknown;
     result?: unknown;
-    is_error?: unknown;
 };
 
 function toText(value: unknown): string | null {
@@ -34,7 +32,7 @@ function toText(value: unknown): string | null {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-    return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
 function buildPromptText(content: PromptContent[]): string {
@@ -75,7 +73,6 @@ export class CursorCliBackend implements AgentBackend {
     private readonly sessionConfigById = new Map<string, AgentSessionConfig>();
     private currentProcess: ChildProcess | null = null;
     private activeCursorSessionId: string | null;
-    private permissionRequestHandler: ((request: PermissionRequest) => void) | null = null;
 
     constructor(private readonly options: CursorCliBackendOptions) {
         this.activeCursorSessionId = options.resumeSessionId ?? null;
@@ -115,9 +112,8 @@ export class CursorCliBackend implements AgentBackend {
         if (this.options.model) {
             args.push('--model', this.options.model);
         }
-        if (this.options.forceWrites !== false) {
-            args.push('--force');
-        }
+        // Cursor print mode requires --force for write operations.
+        args.push('--force');
         if (this.activeCursorSessionId) {
             args.push(`--resume=${this.activeCursorSessionId}`);
         }
@@ -259,16 +255,7 @@ export class CursorCliBackend implements AgentBackend {
     }
 
     async cancelPrompt(_sessionId: string): Promise<void> {
-        const current = this.currentProcess;
-        if (!current) {
-            return;
-        }
-        this.currentProcess = null;
-        try {
-            await killProcessByChildProcess(current, true);
-        } catch (error) {
-            logger.debug('[cursor] Failed to cancel Cursor CLI prompt', error);
-        }
+        await this.terminateCurrentProcess('cancel Cursor CLI prompt')
     }
 
     async respondToPermission(
@@ -280,20 +267,24 @@ export class CursorCliBackend implements AgentBackend {
     }
 
     onPermissionRequest(handler: (request: PermissionRequest) => void): void {
-        this.permissionRequestHandler = handler;
-        void this.permissionRequestHandler;
+        // Cursor print mode with --force does not emit permission request callbacks.
+        void handler
     }
 
     async disconnect(): Promise<void> {
+        await this.terminateCurrentProcess('stop Cursor CLI process')
+    }
+
+    private async terminateCurrentProcess(context: string): Promise<void> {
         if (!this.currentProcess) {
-            return;
+            return
         }
-        const current = this.currentProcess;
-        this.currentProcess = null;
+        const current = this.currentProcess
+        this.currentProcess = null
         try {
-            await killProcessByChildProcess(current, true);
+            await killProcessByChildProcess(current, true)
         } catch (error) {
-            logger.debug('[cursor] Failed to stop Cursor CLI process', error);
+            logger.debug(`[cursor] Failed to ${context}`, error)
         }
     }
 }

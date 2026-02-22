@@ -175,7 +175,7 @@ HAPI's defining feature is the ability to seamlessly hand off control between lo
 
 ### Local Mode
 
-When working in local mode, you have the full terminal experience — it is native Claude Code, Codex, OpenCode, or Cursor:
+When working in local mode, you have the full terminal experience — it is native Claude Code, Codex, Gemini, OpenCode, or Cursor:
 
 - Direct keyboard input with instant response
 - Full terminal UI with syntax highlighting
