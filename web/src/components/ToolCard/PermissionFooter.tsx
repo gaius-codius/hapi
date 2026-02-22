@@ -27,6 +27,7 @@ function isCodexSession(metadata: SessionMetadataSummary | null, toolName: strin
         || toolName.startsWith('Codex')
         || toolName.startsWith('Gemini')
         || toolName.startsWith('OpenCode')
+        || toolName.startsWith('Cursor')
 }
 
 function formatPermissionSummary(permission: ToolPermission, toolName: string, toolInput: unknown, codex: boolean, t: (key: string) => string): string {

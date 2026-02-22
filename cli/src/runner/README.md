@@ -84,6 +84,7 @@ The runner supports spawning sessions with different AI agents:
 |-------|---------|-------------------|
 | `claude` (default) | `hapi claude` | `CLAUDE_CODE_OAUTH_TOKEN` |
 | `codex` | `hapi codex` | `CODEX_HOME` (temp directory with `auth.json`) |
+| `cursor` | `hapi cursor` | - |
 | `gemini` | `hapi gemini` | - |
 | `opencode` | `hapi opencode` | OpenCode config (no token injection) |
 

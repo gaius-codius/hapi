@@ -16,5 +16,6 @@ export function getAgentName(session: Session): string {
     if (flavor === 'codex') return 'Codex'
     if (flavor === 'gemini') return 'Gemini'
     if (flavor === 'opencode') return 'OpenCode'
+    if (flavor === 'cursor') return 'Cursor'
     return 'Agent'
 }

@@ -1,11 +1,12 @@
 # hapi CLI
 
-Run Claude Code, Codex, Gemini, or OpenCode sessions from your terminal and control them remotely through the hapi hub.
+Run Claude Code, Codex, Gemini, OpenCode, or Cursor sessions from your terminal and control them remotely through the hapi hub.
 
 ## What it does
 
 - Starts Claude Code sessions and registers them with hapi-hub.
 - Starts Codex mode for OpenAI-based sessions.
+- Starts Cursor mode using Cursor CLI.
 - Starts Gemini mode via ACP (Anthropic Code Plugins).
 - Starts OpenCode mode via ACP and its plugin hook system.
 - Provides an MCP stdio bridge for external tools.
@@ -26,6 +27,7 @@ Run Claude Code, Codex, Gemini, or OpenCode sessions from your terminal and cont
 - `hapi` - Start a Claude Code session (passes through Claude CLI flags). See `src/index.ts`.
 - `hapi codex` - Start Codex mode. See `src/codex/runCodex.ts`.
 - `hapi codex resume <sessionId>` - Resume existing Codex session.
+- `hapi cursor` - Start Cursor mode. See `src/cursor/runCursor.ts`.
 - `hapi gemini` - Start Gemini mode via ACP. See `src/agent/runners/runAgentSession.ts`.
   Note: Gemini runs in remote mode only; it waits for messages from the hub UI/Telegram.
 - `hapi opencode` - Start OpenCode mode via ACP. See `src/opencode/runOpencode.ts`.
@@ -103,6 +105,7 @@ Data is stored in `~/.hapi/` (or `$HAPI_HOME`):
 ## Requirements
 
 - Claude CLI installed and logged in (`claude` on PATH).
+- Cursor CLI installed and logged in (`agent` on PATH).
 - OpenCode CLI installed (`opencode` on PATH).
 - Bun for building from source.
 
@@ -127,6 +130,7 @@ bun run build:single-exe
 - `src/api/` - Bot communication (Socket.IO + REST).
 - `src/claude/` - Claude Code integration.
 - `src/codex/` - Codex mode integration.
+- `src/cursor/` - Cursor mode integration.
 - `src/agent/` - Multi-agent support (Gemini via ACP).
 - `src/opencode/` - OpenCode ACP + hook integration.
 - `src/runner/` - Background service.

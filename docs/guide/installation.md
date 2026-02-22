@@ -4,7 +4,7 @@ Install the HAPI CLI and set up the hub.
 
 ## Prerequisites
 
-- Claude Code, OpenAI Codex CLI, Google Gemini CLI, or OpenCode CLI installed
+- Claude Code, OpenAI Codex CLI, Google Gemini CLI, OpenCode CLI, or Cursor CLI installed
 
 Verify your CLI is installed:
 
@@ -20,6 +20,9 @@ gemini --version
 
 # For OpenCode CLI
 opencode --version
+
+# For Cursor CLI
+agent --version
 ```
 
 ## Architecture
@@ -28,7 +31,7 @@ HAPI has three components:
 
 | Component | Role | Required |
 |-----------|------|----------|
-| **CLI** | Wraps AI agents (Claude/Codex/Gemini/OpenCode), runs sessions | Yes |
+| **CLI** | Wraps AI agents (Claude/Codex/Gemini/OpenCode/Cursor), runs sessions | Yes |
 | **Hub** | Central coordinator: persistence, real-time sync, remote access | Yes |
 | **Runner** | Background service for remote session spawning | Optional |
 

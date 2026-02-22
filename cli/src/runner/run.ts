@@ -325,6 +325,8 @@ export async function startRunner(): Promise<void> {
         // Construct arguments for the CLI
         const agentCommand = agent === 'codex'
           ? 'codex'
+          : agent === 'cursor'
+            ? 'cursor'
           : agent === 'gemini'
             ? 'gemini'
             : agent === 'opencode'

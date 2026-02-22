@@ -8,7 +8,7 @@ export const PERMISSION_TONE_TEXT: Record<PermissionModeTone, string> = {
 }
 
 export function isCodexFamilyFlavor(flavor?: string | null): boolean {
-    return flavor === 'codex' || flavor === 'gemini' || flavor === 'opencode'
+    return flavor === 'codex' || flavor === 'gemini' || flavor === 'opencode' || flavor === 'cursor'
 }
 
 export function isClaudeFlavor(flavor?: string | null): boolean {
@@ -30,6 +30,8 @@ export function getFlavorTextClass(flavor?: string | null): string {
             return 'text-[var(--app-flavor-gemini)]'
         case 'opencode':
             return 'text-[var(--app-flavor-opencode)]'
+        case 'cursor':
+            return 'text-[var(--app-flavor-cursor)]'
         default:
             return 'text-[var(--app-hint)]'
     }
