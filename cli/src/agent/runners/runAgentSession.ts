@@ -28,6 +28,16 @@ export async function runAgentSession(opts: {
     agentType: string;
     startedBy?: 'runner' | 'terminal';
 }): Promise<void> {
+    const applyBackendSessionIdToMetadata = (backendSessionId: string) => {
+        if (opts.agentType !== 'cursor') {
+            return;
+        }
+        session.updateMetadata((metadata) => ({
+            ...metadata,
+            cursorSessionId: backendSessionId
+        }));
+    };
+
     const initialState: AgentState = {
         controlledByUser: false
     };
@@ -70,6 +80,7 @@ export async function runAgentSession(opts: {
         cwd: process.cwd(),
         mcpServers
     });
+    applyBackendSessionIdToMetadata(agentSessionId);
 
     let thinking = false;
     let shouldExit = false;
@@ -138,6 +149,10 @@ export async function runAgentSession(opts: {
                         session.sendCodexMessage(converted);
                     }
                 });
+                const activeSessionId = backend.getActiveSessionId?.()
+                if (activeSessionId) {
+                    applyBackendSessionIdToMetadata(activeSessionId);
+                }
             } catch (error) {
                 logger.warn('[ACP] Prompt failed', error);
                 session.sendSessionEvent({

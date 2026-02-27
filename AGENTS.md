@@ -6,7 +6,7 @@ Short guide for AI agents in this repo. Prefer progressive loading: start with t
 
 ## What is HAPI?
 
-Local-first platform for running AI coding agents (Claude Code, Codex, Gemini) with remote control via web/phone. CLI wraps agents and connects to hub; hub serves web app and handles real-time sync.
+Local-first platform for running AI coding agents (Claude Code, Codex, Gemini, OpenCode, Cursor) with remote control via web/phone. CLI wraps agents and connects to hub; hub serves web app and handles real-time sync.
 
 ## Repo layout
 
@@ -36,7 +36,7 @@ Bun workspaces; `shared` consumed by cli, hub, web.
 ```
 
 **Data flow:**
-1. CLI spawns agent (claude/codex/gemini), connects to hub via Socket.IO
+1. CLI spawns agent (claude/codex/gemini/opencode/cursor), connects to hub via Socket.IO
 2. Agent events → CLI → hub (socket `message` event) → DB + SSE broadcast
 3. Web subscribes to SSE `/api/events`, receives live updates
 4. User actions → Web → hub REST API → RPC to CLI → agent

@@ -10,6 +10,10 @@ export type GeminiPermissionMode = typeof GEMINI_PERMISSION_MODES[number]
 export const OPENCODE_PERMISSION_MODES = ['default', 'yolo'] as const
 export type OpencodePermissionMode = typeof OPENCODE_PERMISSION_MODES[number]
 
+// Cursor CLI print mode does not expose a runtime permission mode toggle.
+export const CURSOR_PERMISSION_MODES = [] as const
+export type CursorPermissionMode = typeof CURSOR_PERMISSION_MODES[number]
+
 export const PERMISSION_MODES = [
     'default',
     'acceptEdits',
@@ -24,7 +28,7 @@ export type PermissionMode = typeof PERMISSION_MODES[number]
 export const MODEL_MODES = ['default', 'sonnet', 'opus'] as const
 export type ModelMode = typeof MODEL_MODES[number]
 
-export type AgentFlavor = 'claude' | 'codex' | 'gemini' | 'opencode'
+export type AgentFlavor = 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor'
 
 export const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
     default: 'Default',
@@ -78,6 +82,9 @@ export function getPermissionModesForFlavor(flavor?: string | null): readonly Pe
     if (flavor === 'opencode') {
         return OPENCODE_PERMISSION_MODES
     }
+    if (flavor === 'cursor') {
+        return CURSOR_PERMISSION_MODES
+    }
     return CLAUDE_PERMISSION_MODES
 }
 
@@ -94,7 +101,7 @@ export function isPermissionModeAllowedForFlavor(mode: PermissionMode, flavor?: 
 }
 
 export function getModelModesForFlavor(flavor?: string | null): readonly ModelMode[] {
-    if (flavor === 'codex' || flavor === 'gemini' || flavor === 'opencode') {
+    if (flavor === 'codex' || flavor === 'gemini' || flavor === 'opencode' || flavor === 'cursor') {
         return []
     }
     return MODEL_MODES

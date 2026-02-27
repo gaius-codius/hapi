@@ -24,6 +24,11 @@ describe('NewSession preferences', () => {
         expect(loadPreferredYoloMode()).toBe(true)
     })
 
+    it('loads cursor agent value from storage', () => {
+        localStorage.setItem('hapi:newSession:agent', 'cursor')
+        expect(loadPreferredAgent()).toBe('cursor')
+    })
+
     it('falls back to default agent on invalid stored value', () => {
         localStorage.setItem('hapi:newSession:agent', 'unknown-agent')
 

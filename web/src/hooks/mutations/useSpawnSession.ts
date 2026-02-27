@@ -6,7 +6,7 @@ import { queryKeys } from '@/lib/query-keys'
 type SpawnInput = {
     machineId: string
     directory: string
-    agent?: 'claude' | 'codex' | 'gemini' | 'opencode'
+    agent?: 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor'
     model?: string
     yolo?: boolean
     sessionType?: 'simple' | 'worktree'

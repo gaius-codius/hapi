@@ -51,6 +51,7 @@ const BUILTIN_COMMANDS: Record<string, SlashCommand[]> = {
         { name: 'stats', description: 'Check session stats', source: 'builtin' },
     ],
     opencode: [],
+    cursor: [],
 }
 
 export function useSlashCommands(
