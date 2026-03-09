@@ -10,6 +10,10 @@ export type {
     SessionSortPreference,
     Session,
     SyncEvent,
+    TeamMember,
+    TeamMessage,
+    TeamState,
+    TeamTask,
     TodoItem,
     WorktreeMetadata
 } from './schemas'

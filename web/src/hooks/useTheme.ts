@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore } from 'react'
 import { getTelegramWebApp } from './useTelegram'
 
 export type ThemePreference = 'system' | 'light' | 'dark' | 'catpuccin' | 'gaius' | 'gaius-light' | 'gaius-dark'
 type ResolvedTheme = 'light' | 'dark' | 'catpuccin' | 'gaius-light' | 'gaius-dark'
 
+export type AppearancePreference = 'system' | 'dark' | 'light'
+
 const STORAGE_KEY = 'hapi-theme'
+const APPEARANCE_KEY = 'hapi-appearance'
 
 function isBrowser(): boolean {
     return typeof window !== 'undefined' && typeof document !== 'undefined'
@@ -42,6 +45,23 @@ function safeRemoveItem(key: string): void {
 function parseThemePreference(raw: string | null): ThemePreference {
     if (raw === 'light' || raw === 'dark' || raw === 'catpuccin' || raw === 'gaius' || raw === 'gaius-light' || raw === 'gaius-dark') return raw
     return 'system'
+}
+
+function parseAppearance(raw: string | null): AppearancePreference {
+    if (raw === 'dark' || raw === 'light') return raw
+    return 'system'
+}
+
+function getStoredAppearance(): AppearancePreference {
+    return parseAppearance(safeGetItem(APPEARANCE_KEY))
+}
+
+export function getAppearanceOptions(): ReadonlyArray<{ value: AppearancePreference; labelKey: string }> {
+    return [
+        { value: 'system', labelKey: 'settings.display.appearance.system' },
+        { value: 'dark', labelKey: 'settings.display.appearance.dark' },
+        { value: 'light', labelKey: 'settings.display.appearance.light' },
+    ]
 }
 
 function getSystemColorScheme(): 'light' | 'dark' {
@@ -214,4 +234,32 @@ export function useTheme(): {
         setThemePreference,
         isDark: resolved !== 'light' && resolved !== 'gaius-light',
     }
+}
+
+export function useAppearance(): { appearance: AppearancePreference; setAppearance: (pref: AppearancePreference) => void } {
+    const [appearance, setAppearanceState] = useState<AppearancePreference>(getStoredAppearance)
+
+    useEffect(() => {
+        if (!isBrowser()) return
+
+        const onStorage = (event: StorageEvent) => {
+            if (event.key !== APPEARANCE_KEY) return
+            setAppearanceState(parseAppearance(event.newValue))
+        }
+
+        window.addEventListener('storage', onStorage)
+        return () => window.removeEventListener('storage', onStorage)
+    }, [])
+
+    const setAppearance = useCallback((pref: AppearancePreference) => {
+        setAppearanceState(pref)
+
+        if (pref === 'system') {
+            safeRemoveItem(APPEARANCE_KEY)
+        } else {
+            safeSetItem(APPEARANCE_KEY, pref)
+        }
+    }, [])
+
+    return { appearance, setAppearance }
 }

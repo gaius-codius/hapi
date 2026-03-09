@@ -98,6 +98,7 @@ export default {
   'button.paste': 'Paste',
 
   // New session form
+  'newSession.title': 'Create Session',
   'newSession.machine': 'Machine',
   'newSession.directory': 'Directory',
   'newSession.placeholder': '/path/to/project',
@@ -263,6 +264,10 @@ export default {
   'settings.display.theme.gaius': 'Gaius',
   'settings.display.theme.gaius-light': 'Gaius Light',
   'settings.display.theme.gaius-dark': 'Gaius Dark',
+  'settings.display.appearance': 'Appearance',
+  'settings.display.appearance.system': 'Follow System',
+  'settings.display.appearance.dark': 'Dark',
+  'settings.display.appearance.light': 'Light',
   'settings.display.fontSize': 'Font Size',
   'settings.voice.title': 'Voice Assistant',
   'settings.voice.language': 'Voice Language',

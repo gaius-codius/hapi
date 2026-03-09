@@ -26,7 +26,7 @@ export { SessionSortPreferenceStore } from './sessionSortPreferenceStore'
 export { SessionStore } from './sessionStore'
 export { UserStore } from './userStore'
 
-const SCHEMA_VERSION: number = 4
+const SCHEMA_VERSION: number = 5
 const REQUIRED_TABLES = [
     'sessions',
     'machines',
@@ -119,6 +119,12 @@ export class Store {
             }
 
             this.migrateFromV3ToV4()
+            if (SCHEMA_VERSION === 4) {
+                this.setUserVersion(SCHEMA_VERSION)
+                return
+            }
+
+            this.migrateFromV4ToV5()
             this.setUserVersion(SCHEMA_VERSION)
             return
         }
@@ -131,12 +137,30 @@ export class Store {
             }
 
             this.migrateFromV3ToV4()
+            if (SCHEMA_VERSION === 4) {
+                this.setUserVersion(SCHEMA_VERSION)
+                return
+            }
+
+            this.migrateFromV4ToV5()
             this.setUserVersion(SCHEMA_VERSION)
             return
         }
 
         if (currentVersion === 3 && SCHEMA_VERSION >= 4) {
             this.migrateFromV3ToV4()
+            if (SCHEMA_VERSION === 4) {
+                this.setUserVersion(SCHEMA_VERSION)
+                return
+            }
+
+            this.migrateFromV4ToV5()
+            this.setUserVersion(SCHEMA_VERSION)
+            return
+        }
+
+        if (currentVersion === 4 && SCHEMA_VERSION >= 5) {
+            this.migrateFromV4ToV5()
             this.setUserVersion(SCHEMA_VERSION)
             return
         }
@@ -163,6 +187,8 @@ export class Store {
                 agent_state_version INTEGER DEFAULT 1,
                 todos TEXT,
                 todos_updated_at INTEGER,
+                team_state TEXT,
+                team_state_updated_at INTEGER,
                 active INTEGER DEFAULT 0,
                 active_at INTEGER,
                 seq INTEGER DEFAULT 0
@@ -339,6 +365,21 @@ export class Store {
             CREATE INDEX IF NOT EXISTS idx_session_sort_preferences_namespace
                 ON session_sort_preferences(namespace);
         `)
+    }
+
+    private migrateFromV4ToV5(): void {
+        const columns = this.getSessionColumnNames()
+        if (!columns.has('team_state')) {
+            this.db.exec('ALTER TABLE sessions ADD COLUMN team_state TEXT')
+        }
+        if (!columns.has('team_state_updated_at')) {
+            this.db.exec('ALTER TABLE sessions ADD COLUMN team_state_updated_at INTEGER')
+        }
+    }
+
+    private getSessionColumnNames(): Set<string> {
+        const rows = this.db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>
+        return new Set(rows.map((row) => row.name))
     }
 
     private getMachineColumnNames(): Set<string> {
