@@ -44,3 +44,6 @@ export function formatEffortLabel(effort?: string | null): string | null {
         .map(part => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ')
 }
+export function supportsModelChange(flavor?: string | null): boolean {
+    return flavor === 'claude' || flavor === 'gemini'
+}
