@@ -1,8 +1,15 @@
-import React, { act, useEffect } from 'react';
+import React from 'react';
 import { PassThrough } from 'node:stream';
 import { render, type Instance } from 'ink';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSwitchControls, type ConfirmationMode, type ActionInProgress } from './useSwitchControls';
+
+const act = async (fn: () => void | Promise<void>) => {
+    await fn();
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+};
 
 type Key = {
     ctrl?: boolean;
@@ -71,9 +78,7 @@ function HookProbe(props: {
         confirmationTimeoutMs: 5000
     });
 
-    useEffect(() => {
-        props.onState(state);
-    }, [props.onState, state]);
+    props.onState(state);
 
     return null;
 }
