@@ -1,14 +1,15 @@
 import { useId, useMemo, useRef, useState } from 'react'
+import { getPermissionModeLabel, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
 import type { Session } from '@/types/api'
 import type { ApiClient } from '@/api/client'
-import { getPermissionModeLabel, getPermissionModeTone, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
 import { isTelegramApp } from '@/hooks/useTelegram'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { getFlavorTextClass, formatEffortLabel, META_DOT_SEPARATOR_CLASS } from '@/lib/agentFlavorUtils'
+import { getSessionModelLabel } from '@/lib/sessionModelLabel'
 import { useTranslation } from '@/lib/use-translation'
-import { getFlavorBadgeClass, PERMISSION_TONE_BADGE } from '@/lib/agentFlavorUtils'
 
 function getSessionTitle(session: Session): string {
     if (session.metadata?.name) {
@@ -71,20 +72,16 @@ export function SessionHeader(props: {
     const { t } = useTranslation()
     const { session, api, onSessionDeleted } = props
     const title = useMemo(() => getSessionTitle(session), [session])
-    const worktreeBranch = session.metadata?.worktree?.branch
     const flavor = session.metadata?.flavor?.trim() ?? null
-    const flavorLabel = flavor || 'unknown'
-    const flavorBadgeClass = getFlavorBadgeClass(flavor)
-    const permMode = session.permissionMode
+    const worktreeBranch = session.metadata?.worktree?.branch
+    const modelLabel = getSessionModelLabel(session)
+    const effortLabel = formatEffortLabel(session.effort)
+    const permissionMode = session.permissionMode
         && session.permissionMode !== 'default'
         && isPermissionModeAllowedForFlavor(session.permissionMode, flavor)
         ? session.permissionMode
         : null
-    const permissionLabel = permMode ? getPermissionModeLabel(permMode).toLowerCase() : null
-    const permissionBadgeClass = permMode
-        ? PERMISSION_TONE_BADGE[getPermissionModeTone(permMode)]
-        : null
-    const showModelModeBadge = !flavor || flavor === 'claude'
+    const permissionLabel = permissionMode ? getPermissionModeLabel(permissionMode) : null
 
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -121,12 +118,12 @@ export function SessionHeader(props: {
     return (
         <>
             <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
-                <div className="mx-auto w-full max-w-content flex items-center gap-2 p-3">
+                <div className="mx-auto flex w-full max-w-content items-start gap-2 p-3">
                     {/* Back button */}
                     <button
                         type="button"
                         onClick={props.onBack}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                        className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -143,29 +140,46 @@ export function SessionHeader(props: {
                         </svg>
                     </button>
 
-                    {/* Session info - two lines: title and badges */}
+                    {/* Session info - title and chips */}
                     <div className="min-w-0 flex-1">
-                        <div className="truncate font-semibold">
+                        <div className="truncate font-semibold" title={title}>
                             {title}
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-medium ${flavorBadgeClass}`}>
-                                {flavorLabel}
+                        <div className="flex flex-wrap items-center gap-1 pt-1 text-xs">
+                            <span className={getFlavorTextClass(flavor)}>
+                                {flavor || 'unknown'}
                             </span>
-                            {permissionLabel && permissionBadgeClass ? (
-                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-medium ${permissionBadgeClass}`}>
-                                    {permissionLabel}
-                                </span>
+                            {modelLabel ? (
+                                <>
+                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
+                                    <span className="text-[var(--app-fg)]" title={modelLabel.value}>
+                                        {modelLabel.value}
+                                    </span>
+                                </>
                             ) : null}
-                            {showModelModeBadge ? (
-                                <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-subtle-bg)] px-2 py-0.5 font-medium text-[var(--app-fg)]">
-                                    {session.modelMode || 'default'}
-                                </span>
+                            {effortLabel ? (
+                                <>
+                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
+                                    <span className="text-[var(--app-hint)]" title={effortLabel}>
+                                        {effortLabel}
+                                    </span>
+                                </>
+                            ) : null}
+                            {permissionLabel ? (
+                                <>
+                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
+                                    <span className="text-[var(--app-hint)]" title={permissionLabel}>
+                                        {permissionLabel}
+                                    </span>
+                                </>
                             ) : null}
                             {worktreeBranch ? (
-                                <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-subtle-bg)] px-2 py-0.5 text-[var(--app-hint)]">
-                                    {worktreeBranch}
-                                </span>
+                                <>
+                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
+                                    <span className="text-[var(--app-hint)]" title={worktreeBranch}>
+                                        {worktreeBranch}
+                                    </span>
+                                </>
                             ) : null}
                         </div>
                     </div>
@@ -174,7 +188,7 @@ export function SessionHeader(props: {
                         <button
                             type="button"
                             onClick={props.onViewFiles}
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                            className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                             title={t('session.title')}
                         >
                             <FilesIcon />
@@ -189,7 +203,7 @@ export function SessionHeader(props: {
                         aria-haspopup="menu"
                         aria-expanded={menuOpen}
                         aria-controls={menuOpen ? menuId : undefined}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                        className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                         title={t('session.more')}
                     >
                         <MoreVerticalIcon />

@@ -11,7 +11,6 @@
     --app-banner-bg: var(--tg-theme-button-color, #111827);
     --app-banner-text: var(--tg-theme-button-text-color, #ffffff);
     --app-secondary-bg: var(--tg-theme-secondary-bg-color, #f3f4f6);
-    --app-selected-bg: rgba(59, 130, 246, 0.08);
 
     /* Theme-aware colors (light mode defaults) */
     --app-border: rgba(0, 0, 0, 0.1);
@@ -34,9 +33,12 @@
     --app-git-untracked-color: #8E8E93;
 
     /* Badge colors (light) */
-    --app-badge-info-bg: rgba(59, 130, 246, 0.15);
+    --app-badge-info-bg: rgba(59, 130, 246, 0.12);
     --app-badge-info-text: #1d4ed8;
-    --app-badge-info-border: rgba(59, 130, 246, 0.25);
+    --app-badge-info-border: rgba(59, 130, 246, 0.22);
+    --app-badge-info-glow-faint: rgba(59, 130, 246, 0.15);
+    --app-badge-info-glow-soft: rgba(59, 130, 246, 0.3);
+    --app-badge-info-glow-medium: rgba(59, 130, 246, 0.6);
     --app-badge-warning-bg: rgba(245, 158, 11, 0.2);
     --app-badge-warning-text: #b45309;
     --app-badge-warning-border: rgba(245, 158, 11, 0.3);
@@ -47,21 +49,25 @@
     --app-badge-error-text: #b91c1c;
     --app-badge-error-border: rgba(239, 68, 68, 0.3);
 
-    --app-perm-warning: #c2410c;
-
-    /* Agent flavor colors (light) */
-    --app-flavor-claude: #92400e;
+    --app-flavor-claude: #b45309;
     --app-flavor-claude-bg: rgba(245, 158, 11, 0.12);
-    --app-flavor-claude-border: rgba(245, 158, 11, 0.25);
-    --app-flavor-codex: #065f46;
-    --app-flavor-codex-bg: rgba(16, 185, 129, 0.12);
-    --app-flavor-codex-border: rgba(16, 185, 129, 0.25);
-    --app-flavor-gemini: #1e40af;
-    --app-flavor-gemini-bg: rgba(59, 130, 246, 0.12);
-    --app-flavor-gemini-border: rgba(59, 130, 246, 0.25);
-    --app-flavor-opencode: #5b21b6;
-    --app-flavor-opencode-bg: rgba(139, 92, 246, 0.12);
-    --app-flavor-opencode-border: rgba(139, 92, 246, 0.25);
+    --app-flavor-claude-text: #b45309;
+    --app-flavor-claude-border: rgba(245, 158, 11, 0.24);
+    --app-flavor-codex: #1d4ed8;
+    --app-flavor-codex-bg: rgba(59, 130, 246, 0.12);
+    --app-flavor-codex-text: #1d4ed8;
+    --app-flavor-codex-border: rgba(59, 130, 246, 0.24);
+    --app-flavor-gemini: #6d28d9;
+    --app-flavor-gemini-bg: rgba(139, 92, 246, 0.12);
+    --app-flavor-gemini-text: #6d28d9;
+    --app-flavor-gemini-border: rgba(139, 92, 246, 0.24);
+    --app-flavor-opencode: #047857;
+    --app-flavor-opencode-bg: rgba(16, 185, 129, 0.12);
+    --app-flavor-opencode-text: #047857;
+    --app-flavor-opencode-border: rgba(16, 185, 129, 0.24);
+    --app-flavor-cursor-bg: rgba(100, 116, 139, 0.12);
+    --app-flavor-cursor-text: #475569;
+    --app-flavor-cursor-border: rgba(100, 116, 139, 0.24);
 
     --app-font-scale: 1;
 }
@@ -77,7 +83,6 @@
     --app-banner-bg: var(--tg-theme-button-color, #3A3A3C);
     --app-banner-text: var(--tg-theme-button-text-color, #ffffff);
     --app-secondary-bg: var(--tg-theme-secondary-bg-color, #2C2C2E);
-    --app-selected-bg: rgba(59, 130, 246, 0.08);
 
     --app-border: rgba(255, 255, 255, 0.1);
     --app-divider: rgba(255, 255, 255, 0.08);
@@ -99,9 +104,12 @@
     --app-git-untracked-color: #9ca3af;
 
     /* Badge colors (dark) */
-    --app-badge-info-bg: rgba(96, 165, 250, 0.2);
-    --app-badge-info-text: #60a5fa;
-    --app-badge-info-border: rgba(96, 165, 250, 0.3);
+    --app-badge-info-bg: rgba(96, 165, 250, 0.18);
+    --app-badge-info-text: #93c5fd;
+    --app-badge-info-border: rgba(96, 165, 250, 0.28);
+    --app-badge-info-glow-faint: rgba(96, 165, 250, 0.15);
+    --app-badge-info-glow-soft: rgba(96, 165, 250, 0.3);
+    --app-badge-info-glow-medium: rgba(96, 165, 250, 0.6);
     --app-badge-warning-bg: rgba(251, 191, 36, 0.2);
     --app-badge-warning-text: #fbbf24;
     --app-badge-warning-border: rgba(251, 191, 36, 0.3);
@@ -112,21 +120,25 @@
     --app-badge-error-text: #fca5a5;
     --app-badge-error-border: rgba(248, 113, 113, 0.35);
 
-    --app-perm-warning: #fb923c;
-
-    /* Agent flavor colors (dark) */
-    --app-flavor-claude: #fbbf24;
-    --app-flavor-claude-bg: rgba(245, 158, 11, 0.12);
-    --app-flavor-claude-border: rgba(245, 158, 11, 0.25);
-    --app-flavor-codex: #34d399;
-    --app-flavor-codex-bg: rgba(16, 185, 129, 0.12);
-    --app-flavor-codex-border: rgba(16, 185, 129, 0.25);
-    --app-flavor-gemini: #60a5fa;
-    --app-flavor-gemini-bg: rgba(59, 130, 246, 0.12);
-    --app-flavor-gemini-border: rgba(59, 130, 246, 0.25);
-    --app-flavor-opencode: #a78bfa;
-    --app-flavor-opencode-bg: rgba(139, 92, 246, 0.12);
-    --app-flavor-opencode-border: rgba(139, 92, 246, 0.25);
+    --app-flavor-claude: #fcd34d;
+    --app-flavor-claude-bg: rgba(251, 191, 36, 0.16);
+    --app-flavor-claude-text: #fcd34d;
+    --app-flavor-claude-border: rgba(251, 191, 36, 0.28);
+    --app-flavor-codex: #93c5fd;
+    --app-flavor-codex-bg: rgba(96, 165, 250, 0.16);
+    --app-flavor-codex-text: #93c5fd;
+    --app-flavor-codex-border: rgba(96, 165, 250, 0.28);
+    --app-flavor-gemini: #c4b5fd;
+    --app-flavor-gemini-bg: rgba(167, 139, 250, 0.16);
+    --app-flavor-gemini-text: #c4b5fd;
+    --app-flavor-gemini-border: rgba(167, 139, 250, 0.28);
+    --app-flavor-opencode: #6ee7b7;
+    --app-flavor-opencode-bg: rgba(52, 211, 153, 0.16);
+    --app-flavor-opencode-text: #6ee7b7;
+    --app-flavor-opencode-border: rgba(52, 211, 153, 0.28);
+    --app-flavor-cursor-bg: rgba(148, 163, 184, 0.16);
+    --app-flavor-cursor-text: #cbd5e1;
+    --app-flavor-cursor-border: rgba(148, 163, 184, 0.28);
 }
 
 [data-theme="catpuccin"] {
@@ -140,7 +152,6 @@
     --app-banner-bg: #313244;
     --app-banner-text: #cdd6f4;
     --app-secondary-bg: #313244;
-    --app-selected-bg: rgba(137, 180, 250, 0.06);
 
     --app-border: rgba(255, 255, 255, 0.1);
     --app-divider: rgba(255, 255, 255, 0.08);
@@ -165,6 +176,9 @@
     --app-badge-info-bg: rgba(137, 180, 250, 0.12);
     --app-badge-info-text: #89b4fa;
     --app-badge-info-border: rgba(137, 180, 250, 0.22);
+    --app-badge-info-glow-faint: rgba(137, 180, 250, 0.15);
+    --app-badge-info-glow-soft: rgba(137, 180, 250, 0.3);
+    --app-badge-info-glow-medium: rgba(137, 180, 250, 0.6);
     --app-badge-warning-bg: rgba(250, 179, 135, 0.15);
     --app-badge-warning-text: #fab387;
     --app-badge-warning-border: rgba(250, 179, 135, 0.25);
@@ -175,21 +189,25 @@
     --app-badge-error-text: #f38ba8;
     --app-badge-error-border: rgba(243, 139, 168, 0.25);
 
-    --app-perm-warning: #fab387;
-
-    /* Agent flavor colors — Catpuccin Mocha */
     --app-flavor-claude: #fab387;
     --app-flavor-claude-bg: rgba(250, 179, 135, 0.10);
+    --app-flavor-claude-text: #fab387;
     --app-flavor-claude-border: rgba(250, 179, 135, 0.20);
     --app-flavor-codex: #a6e3a1;
     --app-flavor-codex-bg: rgba(166, 227, 161, 0.10);
+    --app-flavor-codex-text: #a6e3a1;
     --app-flavor-codex-border: rgba(166, 227, 161, 0.20);
     --app-flavor-gemini: #74c7ec;
     --app-flavor-gemini-bg: rgba(116, 199, 236, 0.10);
+    --app-flavor-gemini-text: #74c7ec;
     --app-flavor-gemini-border: rgba(116, 199, 236, 0.20);
     --app-flavor-opencode: #cba6f7;
     --app-flavor-opencode-bg: rgba(203, 166, 247, 0.10);
+    --app-flavor-opencode-text: #cba6f7;
     --app-flavor-opencode-border: rgba(203, 166, 247, 0.20);
+    --app-flavor-cursor-bg: rgba(186, 194, 222, 0.10);
+    --app-flavor-cursor-text: #bac2de;
+    --app-flavor-cursor-border: rgba(186, 194, 222, 0.20);
 }
 
 [data-theme="gaius-light"] {
@@ -203,7 +221,6 @@
     --app-banner-bg: #eceae6;
     --app-banner-text: #2a2832;
     --app-secondary-bg: #f0ede9;
-    --app-selected-bg: rgba(176, 68, 64, 0.06);
 
     /* Overlays */
     --app-border: rgba(42, 40, 50, 0.10);
@@ -229,6 +246,9 @@
     --app-badge-info-bg: rgba(64, 104, 160, 0.10);
     --app-badge-info-text: #3a5888;
     --app-badge-info-border: rgba(64, 104, 160, 0.20);
+    --app-badge-info-glow-faint: rgba(58, 88, 136, 0.15);
+    --app-badge-info-glow-soft: rgba(58, 88, 136, 0.3);
+    --app-badge-info-glow-medium: rgba(58, 88, 136, 0.6);
     --app-badge-warning-bg: rgba(176, 120, 48, 0.12);
     --app-badge-warning-text: #8a5820;
     --app-badge-warning-border: rgba(176, 120, 48, 0.22);
@@ -239,21 +259,25 @@
     --app-badge-error-text: #983838;
     --app-badge-error-border: rgba(184, 68, 64, 0.20);
 
-    --app-perm-warning: #b84430;
-
-    /* Agent flavors — cinnabar, verdigris, lapis, violet */
     --app-flavor-claude: #a04038;
     --app-flavor-claude-bg: rgba(160, 64, 56, 0.08);
+    --app-flavor-claude-text: #a04038;
     --app-flavor-claude-border: rgba(160, 64, 56, 0.18);
     --app-flavor-codex: #2a6858;
     --app-flavor-codex-bg: rgba(42, 104, 88, 0.08);
+    --app-flavor-codex-text: #2a6858;
     --app-flavor-codex-border: rgba(42, 104, 88, 0.18);
     --app-flavor-gemini: #3a5888;
     --app-flavor-gemini-bg: rgba(58, 88, 136, 0.08);
+    --app-flavor-gemini-text: #3a5888;
     --app-flavor-gemini-border: rgba(58, 88, 136, 0.18);
     --app-flavor-opencode: #6a5090;
     --app-flavor-opencode-bg: rgba(106, 80, 144, 0.08);
+    --app-flavor-opencode-text: #6a5090;
     --app-flavor-opencode-border: rgba(106, 80, 144, 0.18);
+    --app-flavor-cursor-bg: rgba(106, 104, 116, 0.08);
+    --app-flavor-cursor-text: #6a6874;
+    --app-flavor-cursor-border: rgba(106, 104, 116, 0.18);
 }
 
 [data-theme="gaius-dark"] {
@@ -267,7 +291,6 @@
     --app-banner-bg: #2a2930;
     --app-banner-text: #e6e3de;
     --app-secondary-bg: #252428;
-    --app-selected-bg: rgba(208, 96, 88, 0.06);
 
     /* Overlays */
     --app-border: rgba(230, 227, 222, 0.08);
@@ -293,6 +316,9 @@
     --app-badge-info-bg: rgba(104, 144, 200, 0.12);
     --app-badge-info-text: #6890c8;
     --app-badge-info-border: rgba(104, 144, 200, 0.20);
+    --app-badge-info-glow-faint: rgba(104, 144, 200, 0.15);
+    --app-badge-info-glow-soft: rgba(104, 144, 200, 0.3);
+    --app-badge-info-glow-medium: rgba(104, 144, 200, 0.6);
     --app-badge-warning-bg: rgba(208, 160, 96, 0.15);
     --app-badge-warning-text: #d0a060;
     --app-badge-warning-border: rgba(208, 160, 96, 0.25);
@@ -303,21 +329,25 @@
     --app-badge-error-text: #d87068;
     --app-badge-error-border: rgba(216, 112, 104, 0.22);
 
-    --app-perm-warning: #d08050;
-
-    /* Agent flavors */
     --app-flavor-claude: #d08858;
     --app-flavor-claude-bg: rgba(208, 136, 88, 0.10);
+    --app-flavor-claude-text: #d08858;
     --app-flavor-claude-border: rgba(208, 136, 88, 0.20);
     --app-flavor-codex: #68b8a0;
     --app-flavor-codex-bg: rgba(104, 184, 160, 0.10);
+    --app-flavor-codex-text: #68b8a0;
     --app-flavor-codex-border: rgba(104, 184, 160, 0.20);
     --app-flavor-gemini: #6890c8;
     --app-flavor-gemini-bg: rgba(104, 144, 200, 0.10);
+    --app-flavor-gemini-text: #6890c8;
     --app-flavor-gemini-border: rgba(104, 144, 200, 0.20);
     --app-flavor-opencode: #a088c0;
     --app-flavor-opencode-bg: rgba(160, 136, 192, 0.10);
+    --app-flavor-opencode-text: #a088c0;
     --app-flavor-opencode-border: rgba(160, 136, 192, 0.20);
+    --app-flavor-cursor-bg: rgba(176, 172, 182, 0.10);
+    --app-flavor-cursor-text: #b0acb6;
+    --app-flavor-cursor-border: rgba(176, 172, 182, 0.20);
 }
 
 html {
@@ -329,20 +359,10 @@ body {
     height: 100vh;
     height: 100dvh;
     height: var(--tg-viewport-stable-height, 100dvh);
+    overflow: hidden;
     touch-action: pan-x pan-y;
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
-}
-
-html[data-telegram-app="true"],
-html[data-telegram-app="true"] body {
-    overflow: hidden;
-}
-
-html:not([data-telegram-app="true"]),
-html:not([data-telegram-app="true"]) body {
-    overflow-x: hidden;
-    overflow-y: auto;
 }
 
 body {
@@ -378,16 +398,6 @@ body {
     .desktop-scrollbar-left > * {
         direction: ltr;
     }
-}
-
-/*
- * content-visibility: auto lets the browser skip layout/paint for messages
- * scrolled out of the viewport. Big win on Windows with long conversations (#310).
- * contain-intrinsic-size gives a rough height hint so scrollbar doesn't jump.
- */
-.happy-thread-messages > * {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 80px;
 }
 
 /* Markdown styles */
@@ -525,6 +535,59 @@ html[data-theme="gaius-dark"] .shiki span {
 
 .animate-bounce-in {
   animation: bounce-in 0.3s ease-out;
+}
+
+/* Thinking dot breathing glow */
+@keyframes glow-breathe {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--app-badge-info-glow-soft), 0 0 8px var(--app-badge-info-glow-faint);
+  }
+  50% {
+    box-shadow: 0 0 8px var(--app-badge-info-glow-medium), 0 0 16px var(--app-badge-info-glow-soft);
+  }
+}
+
+.animate-glow-breathe {
+  animation: glow-breathe 2s ease-in-out infinite;
+}
+
+/* Thinking badge breathing pulse */
+@keyframes badge-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-badge-breathe {
+  animation: badge-breathe 2s ease-in-out infinite;
+}
+
+/* Session list item enter animation */
+@keyframes session-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-session-enter {
+  animation: session-enter 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-glow-breathe,
+  .animate-badge-breathe,
+  .animate-session-enter {
+    animation: none;
+  }
+
+  .animate-session-enter {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ReactQueryDevtools button - move to middle-right to avoid blocking UI */

@@ -1,17 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import type { SessionSummary } from '@/types/api'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { I18nProvider } from '@/lib/i18n-context'
 import { SessionList } from './SessionList'
-import { useSessionSortPreference } from '@/hooks/queries/useSessionSortPreference'
-import { useSessionSortPreferenceMutation } from '@/hooks/mutations/useSessionSortPreference'
 
 vi.mock('@/hooks/useLongPress', () => ({
-    useLongPress: ({ onClick }: { onClick: () => void }) => ({ onClick })
+    useLongPress: () => ({})
 }))
 
 vi.mock('@/hooks/usePlatform', () => ({
-    usePlatform: () => ({ haptic: { impact: vi.fn() } })
+    usePlatform: () => ({
+        haptic: {
+            impact: vi.fn()
+        }
+    })
 }))
 
 vi.mock('@/hooks/mutations/useSessionActions', () => ({
@@ -23,184 +24,190 @@ vi.mock('@/hooks/mutations/useSessionActions', () => ({
     })
 }))
 
-vi.mock('@/hooks/queries/useSessionSortPreference', () => ({
-    useSessionSortPreference: vi.fn(() => ({
-        preference: {
-            sortMode: 'auto',
-            manualOrder: {
-                groupOrder: [],
-                sessionOrder: {}
-            },
-            version: 1,
-            updatedAt: 0
-        }
-    }))
-}))
-
-vi.mock('@/hooks/mutations/useSessionSortPreference', () => ({
-    useSessionSortPreferenceMutation: vi.fn(() => ({
-        setSessionSortPreference: vi.fn(),
-        isPending: false
-    }))
-}))
-
-vi.mock('@/components/SessionActionMenu', () => ({
-    SessionActionMenu: () => null
-}))
-
-vi.mock('@/components/RenameSessionDialog', () => ({
-    RenameSessionDialog: () => null
-}))
-
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-    ConfirmDialog: () => null
-}))
-
-function makeSession(overrides: Partial<SessionSummary>): SessionSummary {
-    const id = overrides.id ?? 'session-1'
-    return {
-        id,
-        active: overrides.active ?? true,
-        thinking: overrides.thinking ?? false,
-        activeAt: overrides.activeAt ?? 1,
-        updatedAt: overrides.updatedAt ?? 1,
-        metadata: overrides.metadata ?? {
-            name: id,
-            path: '/repo/app',
-            machineId: 'machine-1',
-            flavor: 'claude',
-            summary: { text: id }
-        },
-        todoProgress: overrides.todoProgress ?? null,
-        pendingRequestsCount: overrides.pendingRequestsCount ?? 0,
-        model: overrides.model ?? null,
-        effort: overrides.effort ?? null,
-        permissionMode: overrides.permissionMode,
-        modelMode: overrides.modelMode
-    }
-}
-
-function renderList(
-    sessions: SessionSummary[],
-    machineLabelsById?: Record<string, string>,
-    options?: { renderHeader?: boolean }
-) {
-    return render(
-        <I18nProvider>
-            <SessionList
-                sessions={sessions}
-                onSelect={vi.fn()}
-                onNewSession={vi.fn()}
-                onRefresh={vi.fn()}
-                isLoading={false}
-                renderHeader={options?.renderHeader ?? false}
-                api={null}
-                machineLabelsById={machineLabelsById}
-            />
-        </I18nProvider>
-    )
-}
+vi.mock('@/components/SessionActionMenu', () => ({ SessionActionMenu: () => null }))
+vi.mock('@/components/RenameSessionDialog', () => ({ RenameSessionDialog: () => null }))
+vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
 
 describe('SessionList', () => {
-    it('shows sort toggle title in header', () => {
-        renderList([], {}, { renderHeader: true })
-
-        expect(screen.getByTitle('Sort: automatic')).toBeInTheDocument()
-    })
-
-    it('groups sessions by machine and directory', () => {
-        const sessions = [
-            makeSession({
-                id: 's1',
-                metadata: { path: '/repo/app', machineId: 'm1', flavor: 'claude' },
-                updatedAt: 100
-            }),
-            makeSession({
-                id: 's2',
-                metadata: { path: '/repo/app', machineId: 'm2', flavor: 'claude' },
-                updatedAt: 90
-            })
-        ]
-
-        renderList(sessions, { m1: 'Laptop', m2: 'Server' })
-
-        expect(screen.getByText('Laptop')).toBeInTheDocument()
-        expect(screen.getByText('Server')).toBeInTheDocument()
-    })
-
-    it('shows permission badge only when mode allowed for flavor', () => {
-        const sessions = [
-            makeSession({
-                id: 'claude-plan',
-                metadata: { path: '/repo/claude', machineId: 'm1', flavor: 'claude' },
-                permissionMode: 'plan'
-            }),
-            makeSession({
-                id: 'codex-plan',
-                metadata: { path: '/repo/codex', machineId: 'm1', flavor: 'codex' },
-                permissionMode: 'plan'
-            })
-        ]
-
-        renderList(sessions, { m1: 'Laptop' })
-
-        expect(screen.getByText('plan mode')).toBeInTheDocument()
-        const codexRow = screen.getAllByText('codex')[0]?.closest('button')
-        expect(codexRow).toBeTruthy()
-        expect(codexRow?.textContent?.toLowerCase()).not.toContain('plan mode')
-    })
-
-    it('renders sessions using backend manual order', () => {
-        vi.mocked(useSessionSortPreference).mockReturnValue({
-            preference: {
-                sortMode: 'manual',
-                manualOrder: {
-                    groupOrder: ['m1::/repo/app'],
-                    sessionOrder: {
-                        'm1::/repo/app': ['s2', 's1']
-                    }
-                },
-                version: 3,
-                updatedAt: 100
+    it('shows glanceable metadata, dims inactive text, and skips disallowed permission mode', () => {
+        const session = {
+            id: 'session-1',
+            active: false,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'gpt-5.4',
+            effort: 'high-effort',
+            permissionMode: 'plan',
+            metadata: {
+                name: 'Inactive codex session',
+                flavor: 'codex',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: {
+                    basePath: '/repo',
+                    branch: 'feature/list-glanceability'
+                }
             },
-            isLoading: false,
-            error: null,
-            refetch: vi.fn()
-        })
-        vi.mocked(useSessionSortPreferenceMutation).mockReturnValue({
-            setSessionSortPreference: vi.fn(),
-            isPending: false
-        })
+            todoProgress: {
+                completed: 3,
+                total: 5
+            }
+        } as any
 
-        const sessions = [
-            makeSession({
-                id: 's1',
-                metadata: {
-                    path: '/repo/app',
-                    machineId: 'm1',
-                    flavor: 'claude',
-                    name: 'Alpha',
-                    summary: { text: 'Alpha summary' }
-                },
-                updatedAt: 200
-            }),
-            makeSession({
-                id: 's2',
-                metadata: {
-                    path: '/repo/app',
-                    machineId: 'm1',
-                    flavor: 'claude',
-                    name: 'Beta',
-                    summary: { text: 'Beta summary' }
-                },
-                updatedAt: 100
-            })
-        ]
+        const activeSession = {
+            id: 'session-2',
+            active: true,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'gpt-5.4',
+            metadata: {
+                name: 'Active helper session',
+                flavor: 'claude',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: {
+                    basePath: '/repo',
+                    branch: 'feature/helper'
+                }
+            }
+        } as any
 
-        const { container } = renderList(sessions, { m1: 'Laptop' })
+        const html = renderToStaticMarkup(
+            <I18nProvider>
+                <SessionList
+                    sessions={[activeSession, session]}
+                    onSelect={vi.fn()}
+                    onNewSession={vi.fn()}
+                    onRefresh={vi.fn()}
+                    isLoading={false}
+                    renderHeader={false}
+                    api={null}
+                    machineLabelsById={{ 'machine-1': 'Desk Mac' }}
+                />
+            </I18nProvider>
+        )
 
-        const items = Array.from(container.querySelectorAll<HTMLButtonElement>('.session-list-item'))
-        expect(items[0]?.textContent).toContain('Beta')
-        expect(items[1]?.textContent).toContain('Alpha')
+        expect(html).toContain('Inactive codex session')
+        expect(html).toContain('codex')
+        expect(html).toContain('gpt-5.4')
+        expect(html).toContain('feature/list-glanceability')
+        expect(html).toContain('3/5')
+        expect(html).toContain('Desk Mac')
+        expect(html).toContain('High Effort')
+        expect(html).not.toContain('Plan Mode')
+        expect(html).toContain('opacity-[0.55]')
+    })
+
+    it('shows allowed permission mode for claude sessions', () => {
+        const session = {
+            id: 'session-plan',
+            active: true,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'claude-sonnet',
+            permissionMode: 'plan',
+            metadata: {
+                name: 'Planned session',
+                flavor: 'claude',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: { basePath: '/repo', branch: 'main' }
+            }
+        } as any
+
+        const html = renderToStaticMarkup(
+            <I18nProvider>
+                <SessionList
+                    sessions={[session]}
+                    onSelect={vi.fn()}
+                    onNewSession={vi.fn()}
+                    onRefresh={vi.fn()}
+                    isLoading={false}
+                    renderHeader={false}
+                    api={null}
+                    machineLabelsById={{ 'machine-1': 'Mac' }}
+                />
+            </I18nProvider>
+        )
+
+        expect(html).toContain('Plan Mode')
+    })
+
+    it('hides todo progress when completed equals total', () => {
+        const session = {
+            id: 'session-done',
+            active: true,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'claude-sonnet',
+            metadata: {
+                name: 'Done session',
+                flavor: 'claude',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: { basePath: '/repo', branch: 'main' }
+            },
+            todoProgress: {
+                completed: 5,
+                total: 5
+            }
+        } as any
+
+        const html = renderToStaticMarkup(
+            <I18nProvider>
+                <SessionList
+                    sessions={[session]}
+                    onSelect={vi.fn()}
+                    onNewSession={vi.fn()}
+                    onRefresh={vi.fn()}
+                    isLoading={false}
+                    renderHeader={false}
+                    api={null}
+                    machineLabelsById={{ 'machine-1': 'Mac' }}
+                />
+            </I18nProvider>
+        )
+
+        expect(html).not.toContain('5/5')
+    })
+
+    it('shows effort label when present', () => {
+        const session = {
+            id: 'session-effort',
+            active: true,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'claude-sonnet',
+            effort: 'low-effort',
+            metadata: {
+                name: 'Effort session',
+                flavor: 'claude',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: { basePath: '/repo', branch: 'main' }
+            }
+        } as any
+
+        const html = renderToStaticMarkup(
+            <I18nProvider>
+                <SessionList
+                    sessions={[session]}
+                    onSelect={vi.fn()}
+                    onNewSession={vi.fn()}
+                    onRefresh={vi.fn()}
+                    isLoading={false}
+                    renderHeader={false}
+                    api={null}
+                    machineLabelsById={{ 'machine-1': 'Mac' }}
+                />
+            </I18nProvider>
+        )
+
+        expect(html).toContain('Low Effort')
     })
 })
