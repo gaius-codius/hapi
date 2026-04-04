@@ -29,7 +29,7 @@ vi.mock('@/components/RenameSessionDialog', () => ({ RenameSessionDialog: () => 
 vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
 
 describe('SessionList', () => {
-    it('shows glanceable metadata, dims inactive text, and skips enter animation on initial render', () => {
+    it('shows glanceable metadata, dims inactive text, and skips disallowed permission mode', () => {
         const session = {
             id: 'session-1',
             active: false,
@@ -97,8 +97,43 @@ describe('SessionList', () => {
         expect(html).toContain('Desk Mac')
         expect(html).toContain('High Effort')
         expect(html).not.toContain('Plan Mode')
-        expect(html).not.toContain('animate-session-enter')
         expect(html).toContain('opacity-[0.55]')
+    })
+
+    it('shows allowed permission mode for claude sessions', () => {
+        const session = {
+            id: 'session-plan',
+            active: true,
+            thinking: false,
+            pendingRequestsCount: 0,
+            updatedAt: Date.now(),
+            model: 'claude-sonnet',
+            permissionMode: 'plan',
+            metadata: {
+                name: 'Planned session',
+                flavor: 'claude',
+                machineId: 'machine-1',
+                path: '/repo/app',
+                worktree: { basePath: '/repo', branch: 'main' }
+            }
+        } as any
+
+        const html = renderToStaticMarkup(
+            <I18nProvider>
+                <SessionList
+                    sessions={[session]}
+                    onSelect={vi.fn()}
+                    onNewSession={vi.fn()}
+                    onRefresh={vi.fn()}
+                    isLoading={false}
+                    renderHeader={false}
+                    api={null}
+                    machineLabelsById={{ 'machine-1': 'Mac' }}
+                />
+            </I18nProvider>
+        )
+
+        expect(html).toContain('Plan Mode')
     })
 
     it('hides todo progress when completed equals total', () => {

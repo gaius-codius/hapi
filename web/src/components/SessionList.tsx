@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { getPermissionModeLabel, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
 import type { SessionSummary } from '@/types/api'
 import type { ApiClient } from '@/api/client'
 import { useLongPress } from '@/hooks/useLongPress'
@@ -218,6 +219,12 @@ function SessionItem(props: {
     const effortLabel = formatEffortLabel(s.effort)
     const flavor = s.metadata?.flavor?.trim() ?? null
     const agentLabel = getAgentLabel(s)
+    const permissionMode = s.permissionMode
+        && s.permissionMode !== 'default'
+        && isPermissionModeAllowedForFlavor(s.permissionMode, flavor)
+        ? s.permissionMode
+        : null
+    const permissionLabel = permissionMode ? getPermissionModeLabel(permissionMode) : null
     const statusDotClass = s.active
         ? (s.thinking ? 'bg-[var(--app-badge-info-text)]' : 'bg-[var(--app-badge-success-text)]')
         : 'bg-[var(--app-hint)]'
@@ -271,6 +278,14 @@ function SessionItem(props: {
                                 <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
                                 <span className="text-[var(--app-hint)]" title={effortLabel}>
                                     {effortLabel}
+                                </span>
+                            </>
+                        ) : null}
+                        {permissionLabel ? (
+                            <>
+                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
+                                <span className="text-[var(--app-hint)]" title={permissionLabel}>
+                                    {permissionLabel}
                                 </span>
                             </>
                         ) : null}
