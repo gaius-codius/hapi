@@ -3,11 +3,11 @@ import { getFlavorTextClass, formatEffortLabel, META_DOT_SEPARATOR_CLASS } from 
 
 describe('getFlavorTextClass', () => {
     it('returns claude text class for "claude"', () => {
-        expect(getFlavorTextClass('claude')).toContain('--app-flavor-claude-text')
+        expect(getFlavorTextClass('claude')).toContain('--app-flavor-claude')
     })
 
     it('returns codex text class for "codex"', () => {
-        expect(getFlavorTextClass('codex')).toContain('--app-flavor-codex-text')
+        expect(getFlavorTextClass('codex')).toContain('--app-flavor-codex')
     })
 
     it('returns hint class for unknown flavor', () => {
@@ -19,7 +19,19 @@ describe('getFlavorTextClass', () => {
     })
 
     it('trims and lowercases input', () => {
-        expect(getFlavorTextClass('  Claude  ')).toContain('--app-flavor-claude-text')
+        expect(getFlavorTextClass('  Claude  ')).toContain('--app-flavor-claude')
+    })
+
+    it('returns gemini text class for "gemini"', () => {
+        expect(getFlavorTextClass('gemini')).toContain('--app-flavor-gemini-text')
+    })
+
+    it('returns opencode text class for "opencode"', () => {
+        expect(getFlavorTextClass('opencode')).toContain('--app-flavor-opencode-text')
+    })
+
+    it('returns cursor text class for "cursor"', () => {
+        expect(getFlavorTextClass('cursor')).toContain('--app-flavor-cursor-text')
     })
 })
 
