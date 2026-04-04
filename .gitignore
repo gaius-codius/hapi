@@ -45,3 +45,5 @@ docs/GAIUS_THEME.md
 # Generated npm bundle output (local)
 cli/npm/main/
 .ace-tool/
+
+docs/superpowers/plans/
