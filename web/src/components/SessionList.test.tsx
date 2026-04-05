@@ -1,213 +1,136 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { I18nProvider } from '@/lib/i18n-context'
-import { SessionList } from './SessionList'
+import { describe, expect, it } from 'vitest'
+import type { SessionSummary } from '@/types/api'
+import { UNKNOWN_MACHINE_ID, groupSessionsByDirectory } from './SessionList'
 
-vi.mock('@/hooks/useLongPress', () => ({
-    useLongPress: () => ({})
-}))
+function makeSession(overrides: Partial<SessionSummary> = {}): SessionSummary {
+    return {
+        id: 'session-1',
+        active: false,
+        thinking: false,
+        activeAt: 0,
+        updatedAt: 0,
+        metadata: {
+            path: '/workspace/project',
+            machineId: 'machine-a'
+        },
+        todoProgress: null,
+        pendingRequestsCount: 0,
+        model: null,
+        effort: null,
+        ...overrides
+    }
+}
 
-vi.mock('@/hooks/usePlatform', () => ({
-    usePlatform: () => ({
-        haptic: {
-            impact: vi.fn()
-        }
+describe('groupSessionsByDirectory', () => {
+    it('groups by machine and directory', () => {
+        const groups = groupSessionsByDirectory([
+            makeSession({ id: 'session-a', metadata: { path: '/workspace/project', machineId: 'machine-a' } }),
+            makeSession({ id: 'session-b', metadata: { path: '/workspace/project', machineId: 'machine-b' } })
+        ])
+
+        expect(groups).toHaveLength(2)
+        expect(groups.map(group => group.key)).toEqual([
+            'machine-a::/workspace/project',
+            'machine-b::/workspace/project'
+        ])
     })
-}))
 
-vi.mock('@/hooks/mutations/useSessionActions', () => ({
-    useSessionActions: () => ({
-        archiveSession: vi.fn(),
-        renameSession: vi.fn(),
-        deleteSession: vi.fn(),
-        isPending: false
+    it('sorts active sessions before inactive sessions within a group', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({ id: 'inactive', active: false, updatedAt: 20 }),
+            makeSession({ id: 'active', active: true, updatedAt: 10 })
+        ])
+
+        expect(group.sessions.map(session => session.id)).toEqual(['active', 'inactive'])
     })
-}))
 
-vi.mock('@/components/SessionActionMenu', () => ({ SessionActionMenu: () => null }))
-vi.mock('@/components/RenameSessionDialog', () => ({ RenameSessionDialog: () => null }))
-vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
+    it('ranks active sessions with pending requests ahead of other active sessions', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({ id: 'active-no-pending', active: true, updatedAt: 30, pendingRequestsCount: 0 }),
+            makeSession({ id: 'active-pending', active: true, updatedAt: 10, pendingRequestsCount: 2 })
+        ])
 
-describe('SessionList', () => {
-    it('shows glanceable metadata, dims inactive text, and skips disallowed permission mode', () => {
-        const session = {
-            id: 'session-1',
-            active: false,
-            thinking: false,
-            pendingRequestsCount: 0,
-            updatedAt: Date.now(),
-            model: 'gpt-5.4',
-            effort: 'high-effort',
-            permissionMode: 'plan',
-            metadata: {
-                name: 'Inactive codex session',
-                flavor: 'codex',
-                machineId: 'machine-1',
-                path: '/repo/app',
-                worktree: {
-                    basePath: '/repo',
-                    branch: 'feature/list-glanceability'
+        expect(group.sessions.map(session => session.id)).toEqual(['active-pending', 'active-no-pending'])
+    })
+
+    it('sorts groups with active sessions ahead of inactive groups', () => {
+        const groups = groupSessionsByDirectory([
+            makeSession({
+                id: 'inactive-group',
+                updatedAt: 100,
+                metadata: { path: '/workspace/inactive', machineId: 'machine-a' }
+            }),
+            makeSession({
+                id: 'active-group',
+                active: true,
+                updatedAt: 10,
+                metadata: { path: '/workspace/active', machineId: 'machine-a' }
+            })
+        ])
+
+        expect(groups.map(group => group.directory)).toEqual([
+            '/workspace/active',
+            '/workspace/inactive'
+        ])
+    })
+
+    it('groups worktree sessions by basePath', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({
+                id: 'worktree-a',
+                metadata: {
+                    path: '/workspace/project-worktrees/feature-a',
+                    machineId: 'machine-a',
+                    worktree: {
+                        branch: 'feature-a',
+                        basePath: '/workspace/project',
+                        name: 'feature-a'
+                    }
                 }
-            },
-            todoProgress: {
-                completed: 3,
-                total: 5
-            }
-        } as any
-
-        const activeSession = {
-            id: 'session-2',
-            active: true,
-            thinking: false,
-            pendingRequestsCount: 0,
-            updatedAt: Date.now(),
-            model: 'gpt-5.4',
-            metadata: {
-                name: 'Active helper session',
-                flavor: 'claude',
-                machineId: 'machine-1',
-                path: '/repo/app',
-                worktree: {
-                    basePath: '/repo',
-                    branch: 'feature/helper'
+            }),
+            makeSession({
+                id: 'worktree-b',
+                metadata: {
+                    path: '/workspace/project-worktrees/feature-b',
+                    machineId: 'machine-a',
+                    worktree: {
+                        branch: 'feature-b',
+                        basePath: '/workspace/project',
+                        name: 'feature-b'
+                    }
                 }
-            }
-        } as any
+            })
+        ])
 
-        const html = renderToStaticMarkup(
-            <I18nProvider>
-                <SessionList
-                    sessions={[activeSession, session]}
-                    onSelect={vi.fn()}
-                    onNewSession={vi.fn()}
-                    onRefresh={vi.fn()}
-                    isLoading={false}
-                    renderHeader={false}
-                    api={null}
-                    machineLabelsById={{ 'machine-1': 'Desk Mac' }}
-                />
-            </I18nProvider>
-        )
-
-        expect(html).toContain('Inactive codex session')
-        expect(html).toContain('codex')
-        expect(html).toContain('gpt-5.4')
-        expect(html).toContain('feature/list-glanceability')
-        expect(html).toContain('3/5')
-        expect(html).toContain('Desk Mac')
-        expect(html).toContain('High Effort')
-        expect(html).not.toContain('Plan Mode')
-        expect(html).toContain('opacity-[0.55]')
+        expect(group.directory).toBe('/workspace/project')
+        expect(group.key).toBe('machine-a::/workspace/project')
+        expect(group.sessions).toHaveLength(2)
     })
 
-    it('shows allowed permission mode for claude sessions', () => {
-        const session = {
-            id: 'session-plan',
-            active: true,
-            thinking: false,
-            pendingRequestsCount: 0,
-            updatedAt: Date.now(),
-            model: 'claude-sonnet',
-            permissionMode: 'plan',
-            metadata: {
-                name: 'Planned session',
-                flavor: 'claude',
-                machineId: 'machine-1',
-                path: '/repo/app',
-                worktree: { basePath: '/repo', branch: 'main' }
-            }
-        } as any
+    it('uses the Other fallback when path metadata is missing', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({
+                id: 'no-path',
+                metadata: {
+                    machineId: undefined
+                } as SessionSummary['metadata']
+            })
+        ])
 
-        const html = renderToStaticMarkup(
-            <I18nProvider>
-                <SessionList
-                    sessions={[session]}
-                    onSelect={vi.fn()}
-                    onNewSession={vi.fn()}
-                    onRefresh={vi.fn()}
-                    isLoading={false}
-                    renderHeader={false}
-                    api={null}
-                    machineLabelsById={{ 'machine-1': 'Mac' }}
-                />
-            </I18nProvider>
-        )
-
-        expect(html).toContain('Plan Mode')
+        expect(group.directory).toBe('Other')
+        expect(group.key).toBe(`${UNKNOWN_MACHINE_ID}::Other`)
     })
 
-    it('hides todo progress when completed equals total', () => {
-        const session = {
-            id: 'session-done',
-            active: true,
-            thinking: false,
-            pendingRequestsCount: 0,
-            updatedAt: Date.now(),
-            model: 'claude-sonnet',
-            metadata: {
-                name: 'Done session',
-                flavor: 'claude',
-                machineId: 'machine-1',
-                path: '/repo/app',
-                worktree: { basePath: '/repo', branch: 'main' }
-            },
-            todoProgress: {
-                completed: 5,
-                total: 5
-            }
-        } as any
+    it('derives compact display names from the directory path', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({
+                metadata: {
+                    path: '/Users/dev/projects/hapi',
+                    machineId: 'machine-a'
+                }
+            })
+        ])
 
-        const html = renderToStaticMarkup(
-            <I18nProvider>
-                <SessionList
-                    sessions={[session]}
-                    onSelect={vi.fn()}
-                    onNewSession={vi.fn()}
-                    onRefresh={vi.fn()}
-                    isLoading={false}
-                    renderHeader={false}
-                    api={null}
-                    machineLabelsById={{ 'machine-1': 'Mac' }}
-                />
-            </I18nProvider>
-        )
-
-        expect(html).not.toContain('5/5')
-    })
-
-    it('shows effort label when present', () => {
-        const session = {
-            id: 'session-effort',
-            active: true,
-            thinking: false,
-            pendingRequestsCount: 0,
-            updatedAt: Date.now(),
-            model: 'claude-sonnet',
-            effort: 'low-effort',
-            metadata: {
-                name: 'Effort session',
-                flavor: 'claude',
-                machineId: 'machine-1',
-                path: '/repo/app',
-                worktree: { basePath: '/repo', branch: 'main' }
-            }
-        } as any
-
-        const html = renderToStaticMarkup(
-            <I18nProvider>
-                <SessionList
-                    sessions={[session]}
-                    onSelect={vi.fn()}
-                    onNewSession={vi.fn()}
-                    onRefresh={vi.fn()}
-                    isLoading={false}
-                    renderHeader={false}
-                    api={null}
-                    machineLabelsById={{ 'machine-1': 'Mac' }}
-                />
-            </I18nProvider>
-        )
-
-        expect(html).toContain('Low Effort')
+        expect(group.displayName).toBe('projects/hapi')
     })
 })

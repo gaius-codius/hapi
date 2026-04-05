@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { I18nProvider } from '@/lib/i18n-context'
 import { SessionHeader } from './SessionHeader'
 
 vi.mock('@/hooks/useTelegram', () => ({
-    isTelegramApp: () => false
+    isTelegramApp: vi.fn(() => false)
 }))
 
 vi.mock('@/hooks/mutations/useSessionActions', () => ({
@@ -16,34 +16,51 @@ vi.mock('@/hooks/mutations/useSessionActions', () => ({
     })
 }))
 
-vi.mock('@/components/SessionActionMenu', () => ({ SessionActionMenu: () => null }))
-vi.mock('@/components/RenameSessionDialog', () => ({ RenameSessionDialog: () => null }))
-vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
+vi.mock('@/components/SessionActionMenu', () => ({
+    SessionActionMenu: () => null
+}))
+
+vi.mock('@/components/RenameSessionDialog', () => ({
+    RenameSessionDialog: () => null
+}))
+
+vi.mock('@/components/ui/ConfirmDialog', () => ({
+    ConfirmDialog: () => null
+}))
 
 function renderHeader(sessionOverrides: Record<string, unknown> = {}) {
     const session = {
-        id: 'session-2',
+        id: '1234567890abcdef',
         active: true,
-        updatedAt: Date.now(),
-        model: 'gpt-5.4',
-        effort: 'high-effort',
-        permissionMode: 'plan',
+        createdAt: 0,
+        updatedAt: 0,
+        activeAt: 0,
+        seq: 0,
+        namespace: 'default',
+        metadataVersion: 0,
+        agentStateVersion: 0,
+        thinking: false,
+        thinkingAt: 0,
         metadata: {
-            name: 'Claude session',
-            flavor: 'claude',
-            path: '/repo/app',
-            worktree: {
-                branch: 'feature/header-glanceability'
-            }
+            name: 'Named Session',
+            path: '/workspace/project-name',
+            flavor: 'codex',
+            worktree: { branch: 'feature/chips', basePath: '/workspace/project-name' }
         },
+        model: 'gpt-5.4',
+        effort: 'very-high',
+        permissionMode: 'yolo',
+        collaborationMode: 'default',
+        agentState: null,
         ...sessionOverrides
-    } as any
+    }
 
     return renderToStaticMarkup(
         <I18nProvider>
             <SessionHeader
-                session={session}
+                session={session as never}
                 onBack={vi.fn()}
+                onViewFiles={vi.fn()}
                 api={null}
             />
         </I18nProvider>
@@ -51,64 +68,76 @@ function renderHeader(sessionOverrides: Record<string, unknown> = {}) {
 }
 
 describe('SessionHeader', () => {
-    it('shows the full colored-text metadata set', () => {
-        const html = renderHeader()
+    beforeEach(() => {
+        vi.clearAllMocks()
+        const localStorageMock = {
+            getItem: vi.fn(() => 'en'),
+            setItem: vi.fn(),
+            removeItem: vi.fn()
+        }
+        Object.defineProperty(window, 'localStorage', { value: localStorageMock, configurable: true })
+    })
 
-        expect(html).toContain('Claude session')
-        expect(html).toContain('claude')
-        expect(html).toContain('gpt-5.4')
-        expect(html).toContain('High Effort')
-        expect(html).toContain('Plan Mode')
-        expect(html).toContain('feature/header-glanceability')
-        expect(html).not.toContain('❖')
+    it('renders full metadata chips', () => {
+        const markup = renderHeader()
+        expect(markup).toContain('Named Session')
+        expect(markup).toContain('codex')
+        expect(markup).toContain('gpt-5.4')
+        expect(markup).toContain('Very High')
+        expect(markup).toContain('Yolo')
+        expect(markup).toContain('feature/chips')
+        expect(markup).toContain('text-[var(--app-flavor-codex-text)] font-medium')
+        expect(markup).toContain('text-[var(--app-hint)] opacity-40')
     })
 
     it('hides effort when absent', () => {
-        const html = renderHeader({ effort: null })
-        expect(html).not.toContain('High Effort')
+        const markup = renderHeader({ effort: null })
+        expect(markup).not.toContain('Very High')
     })
 
-    it('hides permission mode when set to default', () => {
-        const html = renderHeader({ permissionMode: 'default' })
-        expect(html).not.toContain('Plan Mode')
+    it('hides permission mode when default', () => {
+        const markup = renderHeader({ permissionMode: 'default' })
+        expect(markup).not.toContain('Yolo')
     })
 
-    it('hides worktree branch when absent', () => {
-        const html = renderHeader({
+    it('hides worktree when absent', () => {
+        const markup = renderHeader({
             metadata: {
-                name: 'No worktree',
-                flavor: 'claude',
-                path: '/repo/app'
+                name: 'Named Session',
+                path: '/workspace/project-name',
+                flavor: 'codex'
             }
         })
-        expect(html).not.toContain('feature/')
+        expect(markup).not.toContain('feature/chips')
     })
 
-    it('falls back to path-derived title when name is missing', () => {
-        const html = renderHeader({
+    it('falls back to the path basename for the title', () => {
+        const markup = renderHeader({
             metadata: {
-                flavor: 'claude',
-                path: '/repo/my-project'
+                path: '/workspace/path-title',
+                flavor: 'codex'
             }
         })
-        expect(html).toContain('my-project')
+        expect(markup).toContain('path-title')
     })
 
-    it('falls back to sliced id when metadata is missing', () => {
-        const html = renderHeader({
+    it('falls back to the short id when no path or summary exists', () => {
+        const markup = renderHeader({
             id: 'abcdef1234567890',
             metadata: null
         })
-        expect(html).toContain('abcdef12')
+        expect(markup).toContain('abcdef12')
     })
 
-    it('shows unknown for missing flavor', () => {
-        const html = renderHeader({
+    it('uses hint styling for unknown flavors', () => {
+        const markup = renderHeader({
             metadata: {
-                name: 'No flavor',
-                path: '/repo/app'
+                name: 'Mystery Session',
+                path: '/workspace/mystery',
+                flavor: 'mystery'
             }
         })
-        expect(html).toContain('unknown')
+        expect(markup).toContain('mystery')
+        expect(markup).toContain('text-[var(--app-hint)] font-medium')
     })
 })

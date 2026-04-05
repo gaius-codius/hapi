@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useId, useMemo, useRef, useState } from 'react'
 import { getPermissionModeLabel, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
 import type { Session } from '@/types/api'
 import type { ApiClient } from '@/api/client'
@@ -7,7 +7,7 @@ import { useSessionActions } from '@/hooks/mutations/useSessionActions'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { getFlavorTextClass, formatEffortLabel, META_DOT_SEPARATOR_CLASS } from '@/lib/agentFlavorUtils'
+import { formatEffortLabel, getFlavorTextClass, META_DOT_SEPARATOR_CLASS } from '@/lib/agentFlavorUtils'
 import { getSessionModelLabel } from '@/lib/sessionModelLabel'
 import { useTranslation } from '@/lib/use-translation'
 
@@ -75,13 +75,22 @@ export function SessionHeader(props: {
     const flavor = session.metadata?.flavor?.trim() ?? null
     const worktreeBranch = session.metadata?.worktree?.branch
     const modelLabel = getSessionModelLabel(session)
+    const flavorLabel = flavor?.toLowerCase() || 'unknown'
     const effortLabel = formatEffortLabel(session.effort)
     const permissionMode = session.permissionMode
         && session.permissionMode !== 'default'
         && isPermissionModeAllowedForFlavor(session.permissionMode, flavor)
-        ? session.permissionMode
+        ? getPermissionModeLabel(session.permissionMode)
         : null
-    const permissionLabel = permissionMode ? getPermissionModeLabel(permissionMode) : null
+    const metadataItems = [
+        <span key="flavor" className={getFlavorTextClass(flavor)}>
+            {flavorLabel}
+        </span>,
+        modelLabel ? <span key="model">{modelLabel.value}</span> : null,
+        effortLabel ? <span key="effort">{effortLabel}</span> : null,
+        permissionMode ? <span key="permission">{permissionMode}</span> : null,
+        worktreeBranch ? <span key="worktree">{worktreeBranch}</span> : null
+    ].filter(Boolean) as ReactNode[]
 
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -110,7 +119,6 @@ export function SessionHeader(props: {
         setMenuOpen((open) => !open)
     }
 
-    // In Telegram, don't render header (Telegram provides its own)
     if (isTelegramApp()) {
         return null
     }
@@ -119,11 +127,10 @@ export function SessionHeader(props: {
         <>
             <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
                 <div className="mx-auto flex w-full max-w-content items-start gap-2 p-3">
-                    {/* Back button */}
                     <button
                         type="button"
                         onClick={props.onBack}
-                        className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                        className="flex h-8 w-8 self-start items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -140,47 +147,19 @@ export function SessionHeader(props: {
                         </svg>
                     </button>
 
-                    {/* Session info - title and chips */}
                     <div className="min-w-0 flex-1">
-                        <div className="truncate font-semibold" title={title}>
+                        <div className="truncate font-semibold">
                             {title}
                         </div>
-                        <div className="flex flex-wrap items-center gap-1 pt-1 text-xs">
-                            <span className={getFlavorTextClass(flavor)}>
-                                {flavor || 'unknown'}
-                            </span>
-                            {modelLabel ? (
-                                <>
-                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                    <span className="text-[var(--app-fg)]" title={modelLabel.value}>
-                                        {modelLabel.value}
-                                    </span>
-                                </>
-                            ) : null}
-                            {effortLabel ? (
-                                <>
-                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                    <span className="text-[var(--app-hint)]" title={effortLabel}>
-                                        {effortLabel}
-                                    </span>
-                                </>
-                            ) : null}
-                            {permissionLabel ? (
-                                <>
-                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                    <span className="text-[var(--app-hint)]" title={permissionLabel}>
-                                        {permissionLabel}
-                                    </span>
-                                </>
-                            ) : null}
-                            {worktreeBranch ? (
-                                <>
-                                    <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                    <span className="text-[var(--app-hint)]" title={worktreeBranch}>
-                                        {worktreeBranch}
-                                    </span>
-                                </>
-                            ) : null}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--app-hint)]">
+                            {metadataItems.map((item, index) => (
+                                <Fragment key={index}>
+                                    {index > 0 ? (
+                                        <span aria-hidden="true" className={META_DOT_SEPARATOR_CLASS}>·</span>
+                                    ) : null}
+                                    {item}
+                                </Fragment>
+                            ))}
                         </div>
                     </div>
 
@@ -188,7 +167,7 @@ export function SessionHeader(props: {
                         <button
                             type="button"
                             onClick={props.onViewFiles}
-                            className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                            className="flex h-8 w-8 self-start items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                             title={t('session.title')}
                         >
                             <FilesIcon />
@@ -203,7 +182,7 @@ export function SessionHeader(props: {
                         aria-haspopup="menu"
                         aria-expanded={menuOpen}
                         aria-controls={menuOpen ? menuId : undefined}
-                        className="self-start flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
+                        className="flex h-8 w-8 self-start items-center justify-center rounded-full text-[var(--app-hint)] transition-colors hover:bg-[var(--app-secondary-bg)] hover:text-[var(--app-fg)]"
                         title={t('session.more')}
                     >
                         <MoreVerticalIcon />

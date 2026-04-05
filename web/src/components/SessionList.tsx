@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { getPermissionModeLabel, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { SessionSummary } from '@/types/api'
 import type { ApiClient } from '@/api/client'
 import { useLongPress } from '@/hooks/useLongPress'
@@ -8,7 +7,12 @@ import { useSessionActions } from '@/hooks/mutations/useSessionActions'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { SESSION_ACTIVITY_BADGE, SESSION_PENDING_BADGE, getFlavorTextClass, formatEffortLabel, META_DOT_SEPARATOR_CLASS } from '@/lib/agentFlavorUtils'
+import {
+    getFlavorTextClass,
+    META_DOT_SEPARATOR_CLASS,
+    SESSION_ACTIVITY_BADGE,
+    SESSION_PENDING_BADGE
+} from '@/lib/agentFlavorUtils'
 import { getSessionModelLabel } from '@/lib/sessionModelLabel'
 import { useTranslation } from '@/lib/use-translation'
 
@@ -30,15 +34,21 @@ function getGroupDisplayName(directory: string): string {
     return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`
 }
 
+export const UNKNOWN_MACHINE_ID = '__unknown__'
+
 export function groupSessionsByDirectory(sessions: SessionSummary[]): SessionGroup[] {
     const groups = new Map<string, { directory: string; machineId: string | null; sessions: SessionSummary[] }>()
 
     sessions.forEach(session => {
         const path = session.metadata?.worktree?.basePath ?? session.metadata?.path ?? 'Other'
         const machineId = session.metadata?.machineId ?? null
-        const key = `${machineId ?? '__unknown__'}::${path}`
+        const key = `${machineId ?? UNKNOWN_MACHINE_ID}::${path}`
         if (!groups.has(key)) {
-            groups.set(key, { directory: path, machineId, sessions: [] })
+            groups.set(key, {
+                directory: path,
+                machineId,
+                sessions: []
+            })
         }
         groups.get(key)!.sessions.push(session)
     })
@@ -158,7 +168,7 @@ function getTodoProgress(session: SessionSummary): { completed: number; total: n
 
 function getAgentLabel(session: SessionSummary): string {
     const flavor = session.metadata?.flavor?.trim()
-    if (flavor) return flavor
+    if (flavor) return flavor.toLowerCase()
     return 'unknown'
 }
 
@@ -182,10 +192,10 @@ function SessionItem(props: {
     showPath?: boolean
     api: ApiClient | null
     selected?: boolean
-    isNew?: boolean
+    animateEnter?: boolean
 }) {
     const { t } = useTranslation()
-    const { session: s, onSelect, showPath = true, api, selected = false, isNew = false } = props
+    const { session: s, onSelect, showPath = true, api, selected = false, animateEnter = false } = props
     const { haptic } = usePlatform()
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -215,108 +225,74 @@ function SessionItem(props: {
 
     const sessionName = getSessionTitle(s)
     const modelLabel = getSessionModelLabel(s)
-    const todoProgress = getTodoProgress(s)
-    const effortLabel = formatEffortLabel(s.effort)
-    const flavor = s.metadata?.flavor?.trim() ?? null
     const agentLabel = getAgentLabel(s)
-    const permissionMode = s.permissionMode
-        && s.permissionMode !== 'default'
-        && isPermissionModeAllowedForFlavor(s.permissionMode, flavor)
-        ? s.permissionMode
-        : null
-    const permissionLabel = permissionMode ? getPermissionModeLabel(permissionMode) : null
     const statusDotClass = s.active
-        ? (s.thinking ? 'bg-[var(--app-badge-info-text)]' : 'bg-[var(--app-badge-success-text)]')
+        ? (s.thinking ? 'bg-[var(--app-badge-info-text)] animate-glow-breathe' : 'bg-[var(--app-badge-success-text)]')
         : 'bg-[var(--app-hint)]'
+    const todoProgress = getTodoProgress(s)
+    const inactiveClass = s.active ? '' : 'opacity-[0.55]'
+    const metadataItems = [
+        <span key="flavor" className={getFlavorTextClass(s.metadata?.flavor)}>
+            {agentLabel}
+        </span>,
+        modelLabel ? <span key="model">{modelLabel.value}</span> : null,
+        s.metadata?.worktree?.branch ? <span key="worktree">{s.metadata.worktree.branch}</span> : null,
+        todoProgress ? <span key="todo">{todoProgress.completed}/{todoProgress.total}</span> : null
+    ].filter(Boolean) as ReactNode[]
 
     return (
         <>
             <button
                 type="button"
                 {...longPressHandlers}
-                className={`session-list-item flex w-full flex-col gap-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] select-none ${selected ? 'bg-[var(--app-secondary-bg)]' : ''} ${isNew ? 'animate-session-enter' : ''}`}
+                className={`session-list-item flex w-full flex-col gap-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] select-none ${selected ? 'bg-[var(--app-secondary-bg)]' : ''} ${animateEnter ? 'animate-session-enter' : ''}`}
                 style={{ WebkitTouchCallout: 'none' }}
                 aria-current={selected ? 'page' : undefined}
             >
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-2">
                         <span className="flex h-4 w-4 items-center justify-center" aria-hidden="true">
-                            <span
-                                className={`h-2 w-2 rounded-full transition-[background-color,box-shadow] duration-400 motion-reduce:duration-100 ${statusDotClass} ${s.thinking ? 'animate-glow-breathe' : ''}`}
-                            />
+                            <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
                         </span>
-                        <div className={`min-w-0 ${!s.active ? 'opacity-[0.55]' : ''}`}>
-                            <div className="truncate text-base font-medium" title={sessionName}>
+                        <div className={`min-w-0 ${inactiveClass}`}>
+                            <div className="truncate text-base font-medium">
                                 {sessionName}
                             </div>
                             {showPath ? (
-                                <div className="mt-0.5 truncate text-xs text-[var(--app-hint)]" title={s.metadata?.path ?? s.id}>
+                                <div className="truncate text-xs text-[var(--app-hint)]">
                                     {s.metadata?.path ?? s.id}
                                 </div>
                             ) : null}
                         </div>
                     </div>
-                    <div className="shrink-0 pt-0.5 text-[11px] text-[var(--app-hint)]">
+                    <div className="shrink-0 pt-0.5 text-xs text-[var(--app-hint)]">
                         {formatRelativeTime(s.updatedAt, t)}
                     </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1 pl-6 text-xs">
-                    <div className={`flex flex-wrap items-center gap-1 ${!s.active ? 'opacity-[0.55]' : ''}`}>
-                        <span className={getFlavorTextClass(flavor)}>
-                            {agentLabel}
-                        </span>
-                        {modelLabel ? (
-                            <>
-                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                <span className="text-[var(--app-fg)]" title={modelLabel.value}>
-                                    {modelLabel.value}
-                                </span>
-                            </>
+                {(metadataItems.length > 0 || s.thinking || s.pendingRequestsCount > 0) ? (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-6 text-xs text-[var(--app-hint)]">
+                        <div className={`inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 ${inactiveClass}`}>
+                            {metadataItems.map((item, index) => (
+                                <Fragment key={index}>
+                                    {index > 0 ? (
+                                        <span aria-hidden="true" className={META_DOT_SEPARATOR_CLASS}>·</span>
+                                    ) : null}
+                                    {item}
+                                </Fragment>
+                            ))}
+                        </div>
+                        {s.thinking ? (
+                            <span className={`${SESSION_ACTIVITY_BADGE} animate-badge-breathe`}>
+                                {t('session.item.thinking')}
+                            </span>
                         ) : null}
-                        {effortLabel ? (
-                            <>
-                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                <span className="text-[var(--app-hint)]" title={effortLabel}>
-                                    {effortLabel}
-                                </span>
-                            </>
-                        ) : null}
-                        {permissionLabel ? (
-                            <>
-                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                <span className="text-[var(--app-hint)]" title={permissionLabel}>
-                                    {permissionLabel}
-                                </span>
-                            </>
-                        ) : null}
-                        {s.metadata?.worktree?.branch ? (
-                            <>
-                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                <span className="text-[var(--app-hint)]" title={s.metadata.worktree.branch}>
-                                    {s.metadata.worktree.branch}
-                                </span>
-                            </>
-                        ) : null}
-                        {todoProgress ? (
-                            <>
-                                <span className={META_DOT_SEPARATOR_CLASS} aria-hidden="true">·</span>
-                                <span className="text-[var(--app-hint)]">
-                                    {todoProgress.completed}/{todoProgress.total}
-                                </span>
-                            </>
+                        {s.pendingRequestsCount > 0 ? (
+                            <span className={SESSION_PENDING_BADGE}>
+                                {t('session.item.pending')} {s.pendingRequestsCount}
+                            </span>
                         ) : null}
                     </div>
-                    {s.thinking ? (
-                        <span className={`${SESSION_ACTIVITY_BADGE} animate-badge-breathe`}>
-                            {t('session.item.thinking')}
-                        </span>
-                    ) : null}
-                    {s.pendingRequestsCount > 0 ? (
-                        <span className={SESSION_PENDING_BADGE}>
-                            {t('session.item.pending')} {s.pendingRequestsCount}
-                        </span>
-                    ) : null}
-                </div>
+                ) : null}
             </button>
 
             <SessionActionMenu
@@ -364,43 +340,6 @@ function SessionItem(props: {
     )
 }
 
-function GroupHeader(props: {
-    group: SessionGroup
-    isCollapsed: boolean
-    machineLabel: string
-    onToggle: () => void
-}) {
-    return (
-        <button
-            type="button"
-            onClick={props.onToggle}
-            className="sticky top-0 z-10 flex w-full flex-col gap-1 border-b border-[var(--app-divider)] bg-[var(--app-bg)] px-3 py-2 text-left transition-colors hover:bg-[var(--app-secondary-bg)]"
-        >
-            <div className="flex min-w-0 items-center gap-2">
-                <ChevronIcon
-                    className="h-4 w-4 shrink-0 text-[var(--app-hint)]"
-                    collapsed={props.isCollapsed}
-                />
-                <span className="min-w-0 break-words font-medium text-base" title={props.group.directory}>
-                    {props.group.displayName}
-                </span>
-                <span className="shrink-0 text-xs text-[var(--app-hint)]">
-                    ({props.group.sessions.length})
-                </span>
-            </div>
-            <div className="flex min-w-0 items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
-                <span className="inline-flex items-center gap-1 rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] px-1.5 py-0.5">
-                    <MachineIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{props.machineLabel}</span>
-                </span>
-                <span className="truncate" title={props.group.directory}>
-                    {props.group.directory}
-                </span>
-            </div>
-        </button>
-    )
-}
-
 export function SessionList(props: {
     sessions: SessionSummary[]
     onSelect: (sessionId: string) => void
@@ -413,31 +352,32 @@ export function SessionList(props: {
     selectedSessionId?: string | null
 }) {
     const { t } = useTranslation()
-    const { renderHeader = true, api, machineLabelsById = {}, selectedSessionId } = props
+    const { renderHeader = true, api, selectedSessionId, machineLabelsById = {} } = props
     const groups = useMemo(
         () => groupSessionsByDirectory(props.sessions),
         [props.sessions]
     )
+    const knownSessionIdsRef = useRef<Set<string>>(new Set(props.sessions.map(session => session.id)))
     const [collapseOverrides, setCollapseOverrides] = useState<Map<string, boolean>>(
         () => new Map()
     )
-    const initialSessionIdsRef = useRef<Set<string> | null>(null)
-    if (initialSessionIdsRef.current === null) {
-        initialSessionIdsRef.current = new Set(props.sessions.map(s => s.id))
-    }
-    const resolveMachineLabel = (machineId: string | null): string => {
-        if (machineId && machineLabelsById[machineId]) {
-            return machineLabelsById[machineId]
-        }
-        if (machineId) {
-            return machineId.slice(0, 8)
-        }
-        return t('machine.unknown')
-    }
+    const enteringSessionIds = useMemo(() => {
+        const entering = new Set<string>()
+        props.sessions.forEach(session => {
+            if (!knownSessionIdsRef.current.has(session.id)) {
+                entering.add(session.id)
+            }
+        })
+        return entering
+    }, [props.sessions])
+
     const isGroupCollapsed = (group: SessionGroup): boolean => {
         const override = collapseOverrides.get(group.key)
         if (override !== undefined) return override
-        return !group.hasActiveSession
+        const hasSelectedSession = selectedSessionId
+            ? group.sessions.some(session => session.id === selectedSessionId)
+            : false
+        return !group.hasActiveSession && !hasSelectedSession
     }
 
     const toggleGroup = (groupKey: string, isCollapsed: boolean) => {
@@ -447,6 +387,29 @@ export function SessionList(props: {
             return next
         })
     }
+
+    const resolveMachineLabel = (machineId: string | null): string => {
+        if (machineId && machineLabelsById[machineId]) {
+            return machineLabelsById[machineId]
+        }
+        if (machineId) {
+            return machineId.slice(0, 8)
+        }
+        return t('machine.unknown')
+    }
+
+    useEffect(() => {
+        if (!selectedSessionId) return
+        setCollapseOverrides(prev => {
+            const group = groups.find(g =>
+                g.sessions.some(s => s.id === selectedSessionId)
+            )
+            if (!group || !prev.has(group.key) || !prev.get(group.key)) return prev
+            const next = new Map(prev)
+            next.delete(group.key)
+            return next
+        })
+    }, [selectedSessionId, groups])
 
     useEffect(() => {
         setCollapseOverrides(prev => {
@@ -464,6 +427,12 @@ export function SessionList(props: {
         })
     }, [groups])
 
+    useEffect(() => {
+        props.sessions.forEach(session => {
+            knownSessionIdsRef.current.add(session.id)
+        })
+    }, [props.sessions])
+
     return (
         <div className="mx-auto w-full max-w-content flex flex-col">
             {renderHeader ? (
@@ -474,7 +443,7 @@ export function SessionList(props: {
                     <button
                         type="button"
                         onClick={props.onNewSession}
-                        className="session-list-new-button p-1.5 rounded-full text-[var(--app-link)] transition-colors"
+                        className="session-list-new-button rounded-full p-1.5 text-[var(--app-link)] transition-colors"
                         title={t('sessions.new')}
                     >
                         <PlusIcon className="h-5 w-5" />
@@ -485,25 +454,47 @@ export function SessionList(props: {
             <div className="flex flex-col">
                 {groups.map((group) => {
                     const isCollapsed = isGroupCollapsed(group)
+                    const machineLabel = resolveMachineLabel(group.machineId)
                     return (
-                        <div key={group.key}>
-                            <GroupHeader
-                                group={group}
-                                isCollapsed={isCollapsed}
-                                machineLabel={resolveMachineLabel(group.machineId)}
-                                onToggle={() => toggleGroup(group.key, isCollapsed)}
-                            />
+                        <div key={group.key} className="mt-2 first:mt-0">
+                            <button
+                                type="button"
+                                onClick={() => toggleGroup(group.key, isCollapsed)}
+                                className="sticky top-0 z-10 flex w-full flex-col gap-1 border-b border-[var(--app-divider)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-subtle-bg)]"
+                            >
+                                <div className="flex min-w-0 w-full items-center gap-2">
+                                    <ChevronIcon
+                                        className="h-4 w-4 shrink-0 text-[var(--app-hint)]"
+                                        collapsed={isCollapsed}
+                                    />
+                                    <span className="min-w-0 break-words text-sm font-semibold" title={group.directory}>
+                                        {group.displayName}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-[var(--app-hint)]">
+                                        ({group.sessions.length})
+                                    </span>
+                                </div>
+                                <div className="flex min-w-0 w-full flex-wrap items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-0.5">
+                                        <MachineIcon className="h-3 w-3 shrink-0" />
+                                        {machineLabel}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate" title={group.directory}>
+                                        {group.directory}
+                                    </span>
+                                </div>
+                            </button>
                             {!isCollapsed ? (
-                                <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)]">
+                                <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)] border-l border-l-[var(--app-divider)]">
                                     {group.sessions.map((s) => (
                                         <SessionItem
                                             key={s.id}
                                             session={s}
                                             onSelect={props.onSelect}
-                                            showPath={false}
+                                            showPath
                                             api={api}
                                             selected={s.id === selectedSessionId}
-                                            isNew={!initialSessionIdsRef.current!.has(s.id)}
+                                            animateEnter={enteringSessionIds.has(s.id)}
                                         />
                                     ))}
                                 </div>
