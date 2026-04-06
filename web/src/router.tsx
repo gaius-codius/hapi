@@ -122,7 +122,14 @@ function SessionsPage() {
         return `${machineId}::${path}`
     })).size
     const groups = useMemo(() => groupSessionsByDirectory(sessions), [sessions])
-    const { sortMode, isSortPreferencePending, toggleSortMode } = useSortToggle(api, groups)
+    const {
+        sortMode,
+        orderedGroups,
+        isSortPreferencePending,
+        toggleSortMode,
+        moveGroupInPreference,
+        moveSessionInPreference
+    } = useSortToggle(api, groups)
     const machineLabelsById = useMemo(() => {
         const labels: Record<string, string> = {}
         for (const machine of machines) {
@@ -186,6 +193,10 @@ function SessionsPage() {
                     <SessionList
                         sessions={sessions}
                         selectedSessionId={selectedSessionId}
+                        orderedGroups={orderedGroups}
+                        sortMode={sortMode}
+                        moveGroupInPreference={moveGroupInPreference}
+                        moveSessionInPreference={moveSessionInPreference}
                         onSelect={(sessionId) => navigate({
                             to: '/sessions/$sessionId',
                             params: { sessionId },

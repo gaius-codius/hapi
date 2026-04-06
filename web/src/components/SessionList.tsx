@@ -4,6 +4,7 @@ import type { ApiClient } from '@/api/client'
 import { useLongPress } from '@/hooks/useLongPress'
 import { usePlatform } from '@/hooks/usePlatform'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
+import { GroupActionMenu } from '@/components/GroupActionMenu'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -193,9 +194,26 @@ function SessionItem(props: {
     api: ApiClient | null
     selected?: boolean
     animateEnter?: boolean
+    manualMode?: boolean
+    onMoveUp?: () => void
+    onMoveDown?: () => void
+    canMoveUp?: boolean
+    canMoveDown?: boolean
 }) {
     const { t } = useTranslation()
-    const { session: s, onSelect, showPath = true, api, selected = false, animateEnter = false } = props
+    const {
+        session: s,
+        onSelect,
+        showPath = true,
+        api,
+        selected = false,
+        animateEnter = false,
+        manualMode = false,
+        onMoveUp,
+        onMoveDown,
+        canMoveUp = false,
+        canMoveDown = false
+    } = props
     const { haptic } = usePlatform()
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -299,6 +317,11 @@ function SessionItem(props: {
                 isOpen={menuOpen}
                 onClose={() => setMenuOpen(false)}
                 sessionActive={s.active}
+                manualMode={manualMode}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
                 onRename={() => setRenameOpen(true)}
                 onArchive={() => setArchiveOpen(true)}
                 onDelete={() => setDeleteOpen(true)}
@@ -340,6 +363,59 @@ function SessionItem(props: {
     )
 }
 
+function GroupHeader(props: {
+    group: SessionGroup
+    isCollapsed: boolean
+    machineLabel: string
+    manualMode: boolean
+    onToggle: () => void
+    onLongPressMenu: (groupKey: string, point: { x: number; y: number }) => void
+}) {
+    const { haptic } = usePlatform()
+    const longPressHandlers = useLongPress({
+        onLongPress: (point) => {
+            if (!props.manualMode) {
+                return
+            }
+            haptic.impact('medium')
+            props.onLongPressMenu(props.group.key, point)
+        },
+        onClick: props.onToggle,
+        threshold: 500
+    })
+
+    return (
+        <button
+            type="button"
+            {...longPressHandlers}
+            className="sticky top-0 z-10 flex w-full flex-col gap-1 border-b border-[var(--app-divider)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-subtle-bg)]"
+            style={{ WebkitTouchCallout: 'none' }}
+        >
+            <div className="flex min-w-0 w-full items-center gap-2">
+                <ChevronIcon
+                    className="h-4 w-4 shrink-0 text-[var(--app-hint)]"
+                    collapsed={props.isCollapsed}
+                />
+                <span className="min-w-0 break-words text-sm font-semibold" title={props.group.directory}>
+                    {props.group.displayName}
+                </span>
+                <span className="shrink-0 text-xs text-[var(--app-hint)]">
+                    ({props.group.sessions.length})
+                </span>
+            </div>
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-0.5">
+                    <MachineIcon className="h-3 w-3 shrink-0" />
+                    {props.machineLabel}
+                </span>
+                <span className="min-w-0 flex-1 truncate" title={props.group.directory}>
+                    {props.group.directory}
+                </span>
+            </div>
+        </button>
+    )
+}
+
 export function SessionList(props: {
     sessions: SessionSummary[]
     onSelect: (sessionId: string) => void
@@ -350,17 +426,34 @@ export function SessionList(props: {
     api: ApiClient | null
     machineLabelsById?: Record<string, string>
     selectedSessionId?: string | null
+    orderedGroups?: SessionGroup[]
+    sortMode?: 'auto' | 'manual'
+    moveGroupInPreference?: (groupKey: string, direction: 'up' | 'down') => void
+    moveSessionInPreference?: (groupKey: string, sessionId: string, direction: 'up' | 'down') => void
 }) {
     const { t } = useTranslation()
-    const { renderHeader = true, api, selectedSessionId, machineLabelsById = {} } = props
+    const {
+        renderHeader = true,
+        api,
+        selectedSessionId,
+        machineLabelsById = {},
+        orderedGroups,
+        sortMode = 'auto',
+        moveGroupInPreference,
+        moveSessionInPreference
+    } = props
     const groups = useMemo(
         () => groupSessionsByDirectory(props.sessions),
         [props.sessions]
     )
+    const displayGroups = orderedGroups ?? groups
     const knownSessionIdsRef = useRef<Set<string>>(new Set(props.sessions.map(session => session.id)))
     const [collapseOverrides, setCollapseOverrides] = useState<Map<string, boolean>>(
         () => new Map()
     )
+    const [groupMenuOpen, setGroupMenuOpen] = useState(false)
+    const [groupMenuAnchor, setGroupMenuAnchor] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+    const [groupMenuKey, setGroupMenuKey] = useState<string | null>(null)
     const enteringSessionIds = useMemo(() => {
         const entering = new Set<string>()
         props.sessions.forEach(session => {
@@ -370,6 +463,20 @@ export function SessionList(props: {
         })
         return entering
     }, [props.sessions])
+
+    const openGroupActionMenu = (groupKey: string, point: { x: number; y: number }) => {
+        setGroupMenuKey(groupKey)
+        setGroupMenuAnchor(point)
+        setGroupMenuOpen(true)
+    }
+
+    const closeGroupActionMenu = () => {
+        setGroupMenuOpen(false)
+    }
+
+    const groupMenuIndex = groupMenuKey ? displayGroups.findIndex((group) => group.key === groupMenuKey) : -1
+    const canMoveGroupUp = groupMenuIndex > 0
+    const canMoveGroupDown = groupMenuIndex >= 0 && groupMenuIndex < displayGroups.length - 1
 
     const isGroupCollapsed = (group: SessionGroup): boolean => {
         const override = collapseOverrides.get(group.key)
@@ -401,7 +508,7 @@ export function SessionList(props: {
     useEffect(() => {
         if (!selectedSessionId) return
         setCollapseOverrides(prev => {
-            const group = groups.find(g =>
+            const group = displayGroups.find(g =>
                 g.sessions.some(s => s.id === selectedSessionId)
             )
             if (!group || !prev.has(group.key) || !prev.get(group.key)) return prev
@@ -409,13 +516,13 @@ export function SessionList(props: {
             next.delete(group.key)
             return next
         })
-    }, [selectedSessionId, groups])
+    }, [selectedSessionId, displayGroups])
 
     useEffect(() => {
         setCollapseOverrides(prev => {
             if (prev.size === 0) return prev
             const next = new Map(prev)
-            const knownGroups = new Set(groups.map(group => group.key))
+            const knownGroups = new Set(displayGroups.map(group => group.key))
             let changed = false
             for (const groupKey of next.keys()) {
                 if (!knownGroups.has(groupKey)) {
@@ -425,7 +532,17 @@ export function SessionList(props: {
             }
             return changed ? next : prev
         })
-    }, [groups])
+    }, [displayGroups])
+
+    useEffect(() => {
+        if (!groupMenuKey) {
+            return
+        }
+        if (!displayGroups.some((group) => group.key === groupMenuKey)) {
+            setGroupMenuOpen(false)
+            setGroupMenuKey(null)
+        }
+    }, [groupMenuKey, displayGroups])
 
     useEffect(() => {
         props.sessions.forEach(session => {
@@ -438,7 +555,7 @@ export function SessionList(props: {
             {renderHeader ? (
                 <div className="flex items-center justify-between px-3 py-1">
                     <div className="text-xs text-[var(--app-hint)]">
-                        {t('sessions.count', { n: props.sessions.length, m: groups.length })}
+                        {t('sessions.count', { n: props.sessions.length, m: displayGroups.length })}
                     </div>
                     <button
                         type="button"
@@ -452,41 +569,22 @@ export function SessionList(props: {
             ) : null}
 
             <div className="flex flex-col">
-                {groups.map((group) => {
+                {displayGroups.map((group) => {
                     const isCollapsed = isGroupCollapsed(group)
                     const machineLabel = resolveMachineLabel(group.machineId)
                     return (
                         <div key={group.key} className="mt-2 first:mt-0">
-                            <button
-                                type="button"
-                                onClick={() => toggleGroup(group.key, isCollapsed)}
-                                className="sticky top-0 z-10 flex w-full flex-col gap-1 border-b border-[var(--app-divider)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-subtle-bg)]"
-                            >
-                                <div className="flex min-w-0 w-full items-center gap-2">
-                                    <ChevronIcon
-                                        className="h-4 w-4 shrink-0 text-[var(--app-hint)]"
-                                        collapsed={isCollapsed}
-                                    />
-                                    <span className="min-w-0 break-words text-sm font-semibold" title={group.directory}>
-                                        {group.displayName}
-                                    </span>
-                                    <span className="shrink-0 text-xs text-[var(--app-hint)]">
-                                        ({group.sessions.length})
-                                    </span>
-                                </div>
-                                <div className="flex min-w-0 w-full flex-wrap items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-0.5">
-                                        <MachineIcon className="h-3 w-3 shrink-0" />
-                                        {machineLabel}
-                                    </span>
-                                    <span className="min-w-0 flex-1 truncate" title={group.directory}>
-                                        {group.directory}
-                                    </span>
-                                </div>
-                            </button>
+                            <GroupHeader
+                                group={group}
+                                isCollapsed={isCollapsed}
+                                machineLabel={machineLabel}
+                                manualMode={sortMode === 'manual'}
+                                onToggle={() => toggleGroup(group.key, isCollapsed)}
+                                onLongPressMenu={openGroupActionMenu}
+                            />
                             {!isCollapsed ? (
                                 <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)] border-l border-l-[var(--app-divider)]">
-                                    {group.sessions.map((s) => (
+                                    {group.sessions.map((s, index) => (
                                         <SessionItem
                                             key={s.id}
                                             session={s}
@@ -495,6 +593,11 @@ export function SessionList(props: {
                                             api={api}
                                             selected={s.id === selectedSessionId}
                                             animateEnter={enteringSessionIds.has(s.id)}
+                                            manualMode={sortMode === 'manual'}
+                                            onMoveUp={() => moveSessionInPreference?.(group.key, s.id, 'up')}
+                                            onMoveDown={() => moveSessionInPreference?.(group.key, s.id, 'down')}
+                                            canMoveUp={index > 0}
+                                            canMoveDown={index < group.sessions.length - 1}
                                         />
                                     ))}
                                 </div>
@@ -503,6 +606,26 @@ export function SessionList(props: {
                     )
                 })}
             </div>
+
+            <GroupActionMenu
+                isOpen={groupMenuOpen && Boolean(groupMenuKey) && sortMode === 'manual'}
+                onClose={closeGroupActionMenu}
+                onMoveUp={() => {
+                    if (!groupMenuKey) {
+                        return
+                    }
+                    moveGroupInPreference?.(groupMenuKey, 'up')
+                }}
+                onMoveDown={() => {
+                    if (!groupMenuKey) {
+                        return
+                    }
+                    moveGroupInPreference?.(groupMenuKey, 'down')
+                }}
+                canMoveUp={canMoveGroupUp}
+                canMoveDown={canMoveGroupDown}
+                anchorPoint={groupMenuAnchor}
+            />
         </div>
     )
 }
