@@ -10,6 +10,7 @@ type UseLongPressOptions = {
 
 type UseLongPressHandlers = {
     onPointerDown: React.PointerEventHandler
+    onPointerMove: React.PointerEventHandler
     onPointerUp: React.PointerEventHandler
     onPointerLeave: React.PointerEventHandler
     onPointerCancel: React.PointerEventHandler
@@ -23,6 +24,8 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isLongPressRef = useRef(false)
     const pressPointRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+    const movedBeyondThresholdRef = useRef(false)
+    const moveThresholdPx = 8
 
     const clearTimer = useCallback(() => {
         if (timerRef.current) {
@@ -36,6 +39,7 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
 
         clearTimer()
         isLongPressRef.current = false
+        movedBeyondThresholdRef.current = false
         pressPointRef.current = { x: clientX, y: clientY }
 
         timerRef.current = setTimeout(() => {
@@ -52,6 +56,7 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
         }
 
         isLongPressRef.current = false
+        movedBeyondThresholdRef.current = false
     }, [clearTimer, onClick])
 
     const onPointerDown = useCallback<React.PointerEventHandler>((e) => {
@@ -60,9 +65,22 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
         startTimer(e.clientX, e.clientY)
     }, [startTimer])
 
+    const onPointerMove = useCallback<React.PointerEventHandler>((e) => {
+        if (!e.isPrimary || movedBeyondThresholdRef.current) return
+
+        const dx = e.clientX - pressPointRef.current.x
+        const dy = e.clientY - pressPointRef.current.y
+        if (Math.hypot(dx, dy) < moveThresholdPx) {
+            return
+        }
+
+        movedBeyondThresholdRef.current = true
+        clearTimer()
+    }, [clearTimer])
+
     const onPointerUp = useCallback<React.PointerEventHandler>((e) => {
         if (!e.isPrimary) return
-        handleEnd(!isLongPressRef.current)
+        handleEnd(!isLongPressRef.current && !movedBeyondThresholdRef.current)
     }, [handleEnd])
 
     const onPointerLeave = useCallback<React.PointerEventHandler>((e) => {
@@ -94,6 +112,7 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
 
     return {
         onPointerDown,
+        onPointerMove,
         onPointerUp,
         onPointerLeave,
         onPointerCancel,

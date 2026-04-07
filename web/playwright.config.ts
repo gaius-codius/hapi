@@ -6,6 +6,23 @@ const hapiHome = process.env.HAPI_E2E_HAPI_HOME ?? `/tmp/hapi-playwright-${port}
 const cliApiToken = process.env.HAPI_E2E_CLI_TOKEN ?? 'pw-test-token'
 const bunBin = process.env.BUN_BIN ?? 'bun'
 
+function shellQuote(value: string): string {
+    return `'${value.replace(/'/g, `'\"'\"'`)}'`
+}
+
+const buildCommand = [
+    `${shellQuote(bunBin)} run build`,
+    `rm -rf ${shellQuote(hapiHome)}`,
+    `mkdir -p ${shellQuote(hapiHome)}`,
+    [
+        `CLI_API_TOKEN=${shellQuote(cliApiToken)}`,
+        `HAPI_HOME=${shellQuote(hapiHome)}`,
+        'HAPI_LISTEN_HOST=127.0.0.1',
+        `HAPI_LISTEN_PORT=${port}`,
+        `${shellQuote(bunBin)} run --cwd ../hub src/index.ts`
+    ].join(' ')
+].join(' && ')
+
 export default defineConfig({
     testDir: './e2e',
     timeout: 180_000,
@@ -29,7 +46,7 @@ export default defineConfig({
         }
     ],
     webServer: {
-        command: `${bunBin} run build && rm -rf "${hapiHome}" && mkdir -p "${hapiHome}" && CLI_API_TOKEN=${cliApiToken} HAPI_HOME="${hapiHome}" HAPI_LISTEN_HOST=127.0.0.1 HAPI_LISTEN_PORT=${port} ${bunBin} run --cwd ../hub src/index.ts`,
+        command: buildCommand,
         url: `${baseUrl}/health`,
         timeout: 120_000,
         reuseExistingServer: false

@@ -417,11 +417,14 @@ export function SessionList(props: {
     )
     const enteringSessionIds = useMemo(() => {
         const entering = new Set<string>()
+        const nextKnownSessionIds = new Set(knownSessionIdsRef.current)
         props.sessions.forEach(session => {
-            if (!knownSessionIdsRef.current.has(session.id)) {
+            if (!nextKnownSessionIds.has(session.id)) {
                 entering.add(session.id)
             }
+            nextKnownSessionIds.add(session.id)
         })
+        knownSessionIdsRef.current = nextKnownSessionIds
         return entering
     }, [props.sessions])
 
@@ -481,12 +484,6 @@ export function SessionList(props: {
         })
     }, [displayGroups])
 
-    useEffect(() => {
-        props.sessions.forEach(session => {
-            knownSessionIdsRef.current.add(session.id)
-        })
-    }, [props.sessions])
-
     return (
         <div className="mx-auto w-full max-w-content flex flex-col">
             {renderHeader ? (
@@ -519,7 +516,7 @@ export function SessionList(props: {
                             />
                             {!isCollapsed ? (
                                 <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)] border-l border-l-[var(--app-divider)]">
-                                    {group.sessions.map((s, index) => (
+                                    {group.sessions.map((s) => (
                                         <SessionItem
                                             key={s.id}
                                             session={s}

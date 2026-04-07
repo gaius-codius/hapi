@@ -305,6 +305,9 @@ export class SyncEngine {
             modelMode?: Session['modelMode']
         }
     ): Promise<void> {
+        // modelMode is currently hub-managed metadata only. CLI agents do not yet
+        // accept it through set-session-config RPC, so we apply the validated value
+        // locally after the agent acknowledges the rest of the config.
         const rpcConfig = {
             permissionMode: config.permissionMode,
             model: config.model,
