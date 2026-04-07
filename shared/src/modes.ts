@@ -35,6 +35,9 @@ export const PERMISSION_MODES = [
 ] as const
 export type PermissionMode = typeof PERMISSION_MODES[number]
 
+export const MODEL_MODES = ['default', 'sonnet', 'opus'] as const
+export type ModelMode = typeof MODEL_MODES[number]
+
 export const CLAUDE_MODEL_PRESETS = ['sonnet', 'sonnet[1m]', 'opus', 'opus[1m]'] as const
 export type ClaudeModelPreset = typeof CLAUDE_MODEL_PRESETS[number]
 
@@ -82,6 +85,11 @@ export type PermissionModeOption = {
     tone: PermissionModeTone
 }
 
+export type ModelModeOption = {
+    mode: ModelMode
+    label: string
+}
+
 export type CodexCollaborationModeOption = {
     mode: CodexCollaborationMode
     label: string
@@ -92,6 +100,12 @@ export const CLAUDE_MODEL_LABELS: Record<ClaudeModelPreset, string> = {
     'sonnet[1m]': 'Sonnet 1M',
     opus: 'Opus',
     'opus[1m]': 'Opus 1M'
+}
+
+export const MODEL_MODE_LABELS: Record<ModelMode, string> = {
+    default: 'Default',
+    sonnet: 'Sonnet',
+    opus: 'Opus'
 }
 
 export const CODEX_COLLABORATION_MODE_LABELS: Record<CodexCollaborationMode, string> = {
@@ -150,6 +164,28 @@ export function getPermissionModeOptionsForFlavor(flavor?: string | null): Permi
 
 export function isPermissionModeAllowedForFlavor(mode: PermissionMode, flavor?: string | null): boolean {
     return getPermissionModesForFlavor(flavor).includes(mode)
+}
+
+export function getModelModesForFlavor(flavor?: string | null): readonly ModelMode[] {
+    if (flavor === 'codex' || flavor === 'gemini' || flavor === 'opencode' || flavor === 'cursor') {
+        return []
+    }
+    return MODEL_MODES
+}
+
+export function isModelModeAllowedForFlavor(mode: ModelMode, flavor?: string | null): boolean {
+    return getModelModesForFlavor(flavor).includes(mode)
+}
+
+export function getModelModeLabel(mode: ModelMode): string {
+    return MODEL_MODE_LABELS[mode]
+}
+
+export function getModelModeOptionsForFlavor(flavor?: string | null): ModelModeOption[] {
+    return getModelModesForFlavor(flavor).map((mode) => ({
+        mode,
+        label: getModelModeLabel(mode)
+    }))
 }
 
 export function getCodexCollaborationModeOptions(): CodexCollaborationModeOption[] {

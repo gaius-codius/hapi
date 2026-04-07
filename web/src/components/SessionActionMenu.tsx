@@ -191,7 +191,7 @@ export function SessionActionMenu(props: SessionActionMenuProps) {
         if (!isOpen) return
 
         const frame = window.requestAnimationFrame(() => {
-            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
+            const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
             firstItem?.focus()
         })
 

@@ -28,6 +28,8 @@ export type {
     GeminiPermissionMode,
     OpencodePermissionMode,
     ClaudeModelPreset,
+    ModelMode,
+    ModelModeOption,
     PermissionMode,
     PermissionModeOption,
     PermissionModeTone

@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { CODEX_COLLABORATION_MODES, PERMISSION_MODES } from './modes'
+import { CODEX_COLLABORATION_MODES, MODEL_MODES, PERMISSION_MODES } from './modes'
 
 export const PermissionModeSchema = z.enum(PERMISSION_MODES)
+export const ModelModeSchema = z.enum(MODEL_MODES)
 export const CodexCollaborationModeSchema = z.enum(CODEX_COLLABORATION_MODES)
-
 const MetadataSummarySchema = z.object({
     text: z.string(),
     updatedAt: z.number()
@@ -177,6 +177,7 @@ export const SessionSchema = z.object({
     model: z.string().nullable(),
     effort: z.string().nullable(),
     permissionMode: PermissionModeSchema.optional(),
+    modelMode: ModelModeSchema.optional(),
     collaborationMode: CodexCollaborationModeSchema.optional()
 })
 
@@ -236,7 +237,7 @@ export const SyncEventSchema = z.discriminatedUnion('type', [
             status: z.string(),
             subscriptionId: z.string().optional()
         }).optional()
-    })
+    }),
 ])
 
 export type SyncEvent = z.infer<typeof SyncEventSchema>

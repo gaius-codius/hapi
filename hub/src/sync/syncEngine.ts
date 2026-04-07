@@ -7,7 +7,13 @@
  * - No E2E encryption; data is stored as JSON in SQLite
  */
 
-import type { CodexCollaborationMode, DecryptedMessage, PermissionMode, Session, SyncEvent } from '@hapi/protocol/types'
+import type {
+    CodexCollaborationMode,
+    DecryptedMessage,
+    PermissionMode,
+    Session,
+    SyncEvent
+} from '@hapi/protocol/types'
 import type { Server } from 'socket.io'
 import type { Store } from '../store'
 import type { RpcRegistry } from '../socket/rpcRegistry'
@@ -41,6 +47,7 @@ export type {
 export type ResumeSessionResult =
     | { type: 'success'; sessionId: string }
     | { type: 'error'; message: string; code: 'session_not_found' | 'access_denied' | 'no_machine_online' | 'resume_unavailable' | 'resume_failed' }
+
 
 export class SyncEngine {
     private readonly eventPublisher: EventPublisher
@@ -96,6 +103,7 @@ export class SyncEngine {
     getSessionsByNamespace(namespace: string): Session[] {
         return this.sessionCache.getSessionsByNamespace(namespace)
     }
+
 
     getSession(sessionId: string): Session | undefined {
         return this.sessionCache.getSession(sessionId) ?? this.sessionCache.refreshSession(sessionId) ?? undefined
@@ -190,6 +198,7 @@ export class SyncEngine {
         model?: string | null
         effort?: string | null
         collaborationMode?: CodexCollaborationMode
+        modelMode?: Session['modelMode']
     }): void {
         this.sessionCache.handleSessionAlive(payload)
     }
@@ -293,9 +302,16 @@ export class SyncEngine {
             model?: string | null
             effort?: string | null
             collaborationMode?: CodexCollaborationMode
+            modelMode?: Session['modelMode']
         }
     ): Promise<void> {
-        const result = await this.rpcGateway.requestSessionConfig(sessionId, config)
+        const rpcConfig = {
+            permissionMode: config.permissionMode,
+            model: config.model,
+            effort: config.effort,
+            collaborationMode: config.collaborationMode
+        }
+        const result = await this.rpcGateway.requestSessionConfig(sessionId, rpcConfig)
         if (!result || typeof result !== 'object') {
             throw new Error('Invalid response from session config RPC')
         }
@@ -312,7 +328,10 @@ export class SyncEngine {
             throw new Error('Missing applied session config')
         }
 
-        this.sessionCache.applySessionConfig(sessionId, applied)
+        this.sessionCache.applySessionConfig(sessionId, {
+            ...applied,
+            modelMode: config.modelMode
+        })
     }
 
     async spawnSession(

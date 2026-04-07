@@ -9,12 +9,10 @@ type UseLongPressOptions = {
 }
 
 type UseLongPressHandlers = {
-    onMouseDown: React.MouseEventHandler
-    onMouseUp: React.MouseEventHandler
-    onMouseLeave: React.MouseEventHandler
-    onTouchStart: React.TouchEventHandler
-    onTouchEnd: React.TouchEventHandler
-    onTouchMove: React.TouchEventHandler
+    onPointerDown: React.PointerEventHandler
+    onPointerUp: React.PointerEventHandler
+    onPointerLeave: React.PointerEventHandler
+    onPointerCancel: React.PointerEventHandler
     onContextMenu: React.MouseEventHandler
     onKeyDown: React.KeyboardEventHandler
 }
@@ -24,7 +22,6 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isLongPressRef = useRef(false)
-    const touchMoved = useRef(false)
     const pressPointRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
     const clearTimer = useCallback(() => {
@@ -39,7 +36,6 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
 
         clearTimer()
         isLongPressRef.current = false
-        touchMoved.current = false
         pressPointRef.current = { x: clientX, y: clientY }
 
         timerRef.current = setTimeout(() => {
@@ -51,43 +47,33 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
     const handleEnd = useCallback((shouldTriggerClick: boolean) => {
         clearTimer()
 
-        if (shouldTriggerClick && !isLongPressRef.current && !touchMoved.current && onClick) {
+        if (shouldTriggerClick && !isLongPressRef.current && onClick) {
             onClick()
         }
 
         isLongPressRef.current = false
-        touchMoved.current = false
     }, [clearTimer, onClick])
 
-    const onMouseDown = useCallback<React.MouseEventHandler>((e) => {
-        if (e.button !== 0) return
+    const onPointerDown = useCallback<React.PointerEventHandler>((e) => {
+        if (!e.isPrimary) return
+        if (e.pointerType === 'mouse' && e.button !== 0) return
         startTimer(e.clientX, e.clientY)
     }, [startTimer])
 
-    const onMouseUp = useCallback<React.MouseEventHandler>(() => {
+    const onPointerUp = useCallback<React.PointerEventHandler>((e) => {
+        if (!e.isPrimary) return
         handleEnd(!isLongPressRef.current)
     }, [handleEnd])
 
-    const onMouseLeave = useCallback<React.MouseEventHandler>(() => {
+    const onPointerLeave = useCallback<React.PointerEventHandler>((e) => {
+        if (!e.isPrimary) return
         handleEnd(false)
     }, [handleEnd])
 
-    const onTouchStart = useCallback<React.TouchEventHandler>((e) => {
-        const touch = e.touches[0]
-        startTimer(touch.clientX, touch.clientY)
-    }, [startTimer])
-
-    const onTouchEnd = useCallback<React.TouchEventHandler>((e) => {
-        if (isLongPressRef.current) {
-            e.preventDefault()
-        }
-        handleEnd(!isLongPressRef.current)
+    const onPointerCancel = useCallback<React.PointerEventHandler>((e) => {
+        if (!e.isPrimary) return
+        handleEnd(false)
     }, [handleEnd])
-
-    const onTouchMove = useCallback<React.TouchEventHandler>(() => {
-        touchMoved.current = true
-        clearTimer()
-    }, [clearTimer])
 
     const onContextMenu = useCallback<React.MouseEventHandler>((e) => {
         if (!disabled) {
@@ -107,12 +93,10 @@ export function useLongPress(options: UseLongPressOptions): UseLongPressHandlers
     }, [disabled, onClick])
 
     return {
-        onMouseDown,
-        onMouseUp,
-        onMouseLeave,
-        onTouchStart,
-        onTouchEnd,
-        onTouchMove,
+        onPointerDown,
+        onPointerUp,
+        onPointerLeave,
+        onPointerCancel,
         onContextMenu,
         onKeyDown
     }

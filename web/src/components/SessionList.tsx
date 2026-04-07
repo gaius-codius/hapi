@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { SessionSummary } from '@/types/api'
 import type { ApiClient } from '@/api/client'
 import { useLongPress } from '@/hooks/useLongPress'
@@ -7,6 +7,12 @@ import { useSessionActions } from '@/hooks/mutations/useSessionActions'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import {
+    getFlavorTextClass,
+    META_DOT_SEPARATOR_CLASS,
+    SESSION_ACTIVITY_BADGE,
+    SESSION_PENDING_BADGE
+} from '@/lib/agentFlavorUtils'
 import { getSessionModelLabel } from '@/lib/sessionModelLabel'
 import { useTranslation } from '@/lib/use-translation'
 
@@ -30,7 +36,7 @@ function getGroupDisplayName(directory: string): string {
 
 export const UNKNOWN_MACHINE_ID = '__unknown__'
 
-function groupSessionsByDirectory(sessions: SessionSummary[]): SessionGroup[] {
+export function groupSessionsByDirectory(sessions: SessionSummary[]): SessionGroup[] {
     const groups = new Map<string, { directory: string; machineId: string | null; sessions: SessionSummary[] }>()
 
     sessions.forEach(session => {
@@ -100,27 +106,6 @@ function PlusIcon(props: { className?: string }) {
     )
 }
 
-function BulbIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <path d="M9 18h6" />
-            <path d="M10 22h4" />
-            <path d="M12 2a7 7 0 0 0-4 12c.6.6 1 1.2 1 2h6c0-.8.4-1.4 1-2a7 7 0 0 0-4-12Z" />
-        </svg>
-    )
-}
-
 function ChevronIcon(props: { className?: string; collapsed?: boolean }) {
     return (
         <svg
@@ -136,6 +121,27 @@ function ChevronIcon(props: { className?: string; collapsed?: boolean }) {
             className={`${props.className ?? ''} transition-transform duration-200 ${props.collapsed ? '' : 'rotate-90'}`}
         >
             <polyline points="9 18 15 12 9 6" />
+        </svg>
+    )
+}
+
+function MachineIcon(props: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={props.className}
+        >
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
         </svg>
     )
 }
@@ -162,29 +168,8 @@ function getTodoProgress(session: SessionSummary): { completed: number; total: n
 
 function getAgentLabel(session: SessionSummary): string {
     const flavor = session.metadata?.flavor?.trim()
-    if (flavor) return flavor
+    if (flavor) return flavor.toLowerCase()
     return 'unknown'
-}
-
-function MachineIcon(props: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={props.className}
-        >
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-    )
 }
 
 function formatRelativeTime(value: number, t: (key: string, params?: Record<string, string | number>) => string): string | null {
@@ -204,12 +189,18 @@ function formatRelativeTime(value: number, t: (key: string, params?: Record<stri
 function SessionItem(props: {
     session: SessionSummary
     onSelect: (sessionId: string) => void
-    showPath?: boolean
     api: ApiClient | null
     selected?: boolean
+    animateEnter?: boolean
 }) {
     const { t } = useTranslation()
-    const { session: s, onSelect, showPath = true, api, selected = false } = props
+    const {
+        session: s,
+        onSelect,
+        api,
+        selected = false,
+        animateEnter = false
+    } = props
     const { haptic } = usePlatform()
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -239,71 +230,69 @@ function SessionItem(props: {
 
     const sessionName = getSessionTitle(s)
     const modelLabel = getSessionModelLabel(s)
+    const agentLabel = getAgentLabel(s)
     const statusDotClass = s.active
-        ? (s.thinking ? 'bg-[#007AFF]' : 'bg-[var(--app-badge-success-text)]')
+        ? (s.thinking ? 'bg-[var(--app-badge-info-text)]' : 'bg-[var(--app-badge-success-text)]')
         : 'bg-[var(--app-hint)]'
     const todoProgress = getTodoProgress(s)
+    const inactiveClass = s.active ? '' : 'opacity-[0.55]'
+    const metadataItems = [
+        <span key="flavor" className={getFlavorTextClass(s.metadata?.flavor)}>
+            {agentLabel}
+        </span>,
+        modelLabel ? <span key="model">{modelLabel.value}</span> : null,
+        s.metadata?.worktree?.branch ? <span key="worktree">{s.metadata.worktree.branch}</span> : null,
+        todoProgress ? <span key="todo">{todoProgress.completed}/{todoProgress.total}</span> : null
+    ].filter(Boolean) as ReactNode[]
+
     return (
         <>
             <button
                 type="button"
                 {...longPressHandlers}
-                className={`session-list-item flex w-full flex-col gap-1.5 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] select-none ${selected ? 'bg-[var(--app-secondary-bg)]' : ''}`}
+                className={`session-list-item flex w-full flex-col gap-2 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] select-none ${selected ? 'bg-[var(--app-secondary-bg)]' : ''} ${animateEnter ? 'animate-session-enter' : ''}`}
                 style={{ WebkitTouchCallout: 'none' }}
                 aria-current={selected ? 'page' : undefined}
             >
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-2">
                         <span className="flex h-4 w-4 items-center justify-center" aria-hidden="true">
-                            <span
-                                className={`h-2 w-2 rounded-full ${statusDotClass}`}
-                            />
+                            <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
                         </span>
-                        <div className="truncate text-base font-medium">
-                            {sessionName}
+                        <div className={`min-w-0 ${inactiveClass}`}>
+                            <div className="truncate text-base font-medium">
+                                {sessionName}
+                            </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 text-xs">
+                    <div className="shrink-0 pt-0.5 text-xs text-[var(--app-hint)]">
+                        {formatRelativeTime(s.updatedAt, t)}
+                    </div>
+                </div>
+                {(metadataItems.length > 0 || s.thinking || s.pendingRequestsCount > 0) ? (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-6 text-xs text-[var(--app-hint)]">
+                        <div className={`inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 ${inactiveClass}`}>
+                            {metadataItems.map((item, index) => (
+                                <Fragment key={index}>
+                                    {index > 0 ? (
+                                        <span aria-hidden="true" className={META_DOT_SEPARATOR_CLASS}>·</span>
+                                    ) : null}
+                                    {item}
+                                </Fragment>
+                            ))}
+                        </div>
                         {s.thinking ? (
-                            <span className="text-[#007AFF] animate-pulse">
+                            <span className={SESSION_ACTIVITY_BADGE}>
                                 {t('session.item.thinking')}
                             </span>
                         ) : null}
-                        {todoProgress ? (
-                            <span className="flex items-center gap-1 text-[var(--app-hint)]">
-                                <BulbIcon className="h-3 w-3" />
-                                {todoProgress.completed}/{todoProgress.total}
-                            </span>
-                        ) : null}
                         {s.pendingRequestsCount > 0 ? (
-                            <span className="text-[var(--app-badge-warning-text)]">
+                            <span className={SESSION_PENDING_BADGE}>
                                 {t('session.item.pending')} {s.pendingRequestsCount}
                             </span>
                         ) : null}
-                        <span className="text-[var(--app-hint)]">
-                            {formatRelativeTime(s.updatedAt, t)}
-                        </span>
-                    </div>
-                </div>
-                {showPath ? (
-                    <div className="truncate text-xs text-[var(--app-hint)]">
-                        {s.metadata?.path ?? s.id}
                     </div>
                 ) : null}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--app-hint)]">
-                    <span className="inline-flex items-center gap-2">
-                        <span className="flex h-4 w-4 items-center justify-center" aria-hidden="true">
-                            ❖
-                        </span>
-                        {getAgentLabel(s)}
-                    </span>
-                    {modelLabel ? (
-                        <span>{t(modelLabel.key)}: {modelLabel.value}</span>
-                    ) : null}
-                    {s.metadata?.worktree?.branch ? (
-                        <span>{t('session.item.worktree')}: {s.metadata.worktree.branch}</span>
-                    ) : null}
-                </div>
             </button>
 
             <SessionActionMenu
@@ -351,6 +340,54 @@ function SessionItem(props: {
     )
 }
 
+function GroupHeader(props: {
+    group: SessionGroup
+    isCollapsed: boolean
+    machineLabel: string
+    onToggle: () => void
+}) {
+    const { haptic } = usePlatform()
+    const longPressHandlers = useLongPress({
+        onLongPress: () => {
+            haptic.impact('medium')
+        },
+        onClick: props.onToggle,
+        threshold: 500
+    })
+
+    return (
+        <button
+            type="button"
+            {...longPressHandlers}
+            aria-expanded={!props.isCollapsed}
+            className="sticky top-0 z-10 flex w-full flex-col gap-1 border-b border-[var(--app-divider)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-subtle-bg)]"
+            style={{ WebkitTouchCallout: 'none' }}
+        >
+            <div className="flex min-w-0 w-full items-center gap-2">
+                <ChevronIcon
+                    className="h-4 w-4 shrink-0 text-[var(--app-hint)]"
+                    collapsed={props.isCollapsed}
+                />
+                <span className="min-w-0 break-words text-sm font-semibold" title={props.group.directory}>
+                    {props.group.displayName}
+                </span>
+                <span className="shrink-0 text-xs text-[var(--app-hint)]">
+                    ({props.group.sessions.length})
+                </span>
+            </div>
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-0.5">
+                    <MachineIcon className="h-3 w-3 shrink-0" />
+                    {props.machineLabel}
+                </span>
+                <span className="min-w-0 flex-1 truncate" title={props.group.directory}>
+                    {props.group.directory}
+                </span>
+            </div>
+        </button>
+    )
+}
+
 export function SessionList(props: {
     sessions: SessionSummary[]
     onSelect: (sessionId: string) => void
@@ -363,14 +400,31 @@ export function SessionList(props: {
     selectedSessionId?: string | null
 }) {
     const { t } = useTranslation()
-    const { renderHeader = true, api, selectedSessionId, machineLabelsById = {} } = props
+    const {
+        renderHeader = true,
+        api,
+        selectedSessionId,
+        machineLabelsById = {}
+    } = props
     const groups = useMemo(
         () => groupSessionsByDirectory(props.sessions),
         [props.sessions]
     )
+    const displayGroups = groups
+    const knownSessionIdsRef = useRef<Set<string>>(new Set(props.sessions.map(session => session.id)))
     const [collapseOverrides, setCollapseOverrides] = useState<Map<string, boolean>>(
         () => new Map()
     )
+    const enteringSessionIds = useMemo(() => {
+        const entering = new Set<string>()
+        props.sessions.forEach(session => {
+            if (!knownSessionIdsRef.current.has(session.id)) {
+                entering.add(session.id)
+            }
+        })
+        return entering
+    }, [props.sessions])
+
     const isGroupCollapsed = (group: SessionGroup): boolean => {
         const override = collapseOverrides.get(group.key)
         if (override !== undefined) return override
@@ -401,7 +455,7 @@ export function SessionList(props: {
     useEffect(() => {
         if (!selectedSessionId) return
         setCollapseOverrides(prev => {
-            const group = groups.find(g =>
+            const group = displayGroups.find(g =>
                 g.sessions.some(s => s.id === selectedSessionId)
             )
             if (!group || !prev.has(group.key) || !prev.get(group.key)) return prev
@@ -409,13 +463,13 @@ export function SessionList(props: {
             next.delete(group.key)
             return next
         })
-    }, [selectedSessionId, groups])
+    }, [selectedSessionId, displayGroups])
 
     useEffect(() => {
         setCollapseOverrides(prev => {
             if (prev.size === 0) return prev
             const next = new Map(prev)
-            const knownGroups = new Set(groups.map(group => group.key))
+            const knownGroups = new Set(displayGroups.map(group => group.key))
             let changed = false
             for (const groupKey of next.keys()) {
                 if (!knownGroups.has(groupKey)) {
@@ -425,19 +479,25 @@ export function SessionList(props: {
             }
             return changed ? next : prev
         })
-    }, [groups])
+    }, [displayGroups])
+
+    useEffect(() => {
+        props.sessions.forEach(session => {
+            knownSessionIdsRef.current.add(session.id)
+        })
+    }, [props.sessions])
 
     return (
         <div className="mx-auto w-full max-w-content flex flex-col">
             {renderHeader ? (
                 <div className="flex items-center justify-between px-3 py-1">
                     <div className="text-xs text-[var(--app-hint)]">
-                        {t('sessions.count', { n: props.sessions.length, m: groups.length })}
+                        {t('sessions.count', { n: props.sessions.length, m: displayGroups.length })}
                     </div>
                     <button
                         type="button"
                         onClick={props.onNewSession}
-                        className="session-list-new-button p-1.5 rounded-full text-[var(--app-link)] transition-colors"
+                        className="session-list-new-button rounded-full p-1.5 text-[var(--app-link)] transition-colors"
                         title={t('sessions.new')}
                     >
                         <PlusIcon className="h-5 w-5" />
@@ -446,48 +506,27 @@ export function SessionList(props: {
             ) : null}
 
             <div className="flex flex-col">
-                {groups.map((group) => {
+                {displayGroups.map((group) => {
                     const isCollapsed = isGroupCollapsed(group)
                     const machineLabel = resolveMachineLabel(group.machineId)
                     return (
                         <div key={group.key} className="mt-2 first:mt-0">
-                            <button
-                                type="button"
-                                onClick={() => toggleGroup(group.key, isCollapsed)}
-                                className="sticky top-0 z-10 flex w-full flex-col gap-1 px-3 py-2.5 text-left bg-[var(--app-secondary-bg)] border-b border-[var(--app-border)] border-l-[3px] border-l-[var(--app-hint)] transition-colors hover:bg-[var(--app-subtle-bg)]"
-                            >
-                                <div className="flex items-center gap-2 min-w-0 w-full">
-                                    <ChevronIcon
-                                        className="h-4 w-4 text-[var(--app-hint)] shrink-0"
-                                        collapsed={isCollapsed}
-                                    />
-                                    <span className="font-semibold text-sm break-words min-w-0" title={group.directory}>
-                                        {group.displayName}
-                                    </span>
-                                    <span className="shrink-0 rounded-full bg-[var(--app-subtle-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--app-hint)]">
-                                        {group.sessions.length}
-                                    </span>
-                                </div>
-                                <div className="flex min-w-0 w-full flex-wrap items-center gap-2 pl-6 text-xs text-[var(--app-hint)]">
-                                    <span className="inline-flex items-center gap-1 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-0.5">
-                                        <MachineIcon className="h-3 w-3 shrink-0" />
-                                        {machineLabel}
-                                    </span>
-                                    <span className="min-w-0 flex-1 truncate" title={group.directory}>
-                                        {group.directory}
-                                    </span>
-                                </div>
-                            </button>
+                            <GroupHeader
+                                group={group}
+                                isCollapsed={isCollapsed}
+                                machineLabel={machineLabel}
+                                onToggle={() => toggleGroup(group.key, isCollapsed)}
+                            />
                             {!isCollapsed ? (
                                 <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)] border-l border-l-[var(--app-divider)]">
-                                    {group.sessions.map((s) => (
+                                    {group.sessions.map((s, index) => (
                                         <SessionItem
                                             key={s.id}
                                             session={s}
                                             onSelect={props.onSelect}
-                                            showPath={false}
                                             api={api}
                                             selected={s.id === selectedSessionId}
+                                            animateEnter={enteringSessionIds.has(s.id)}
                                         />
                                     ))}
                                 </div>
@@ -496,6 +535,7 @@ export function SessionList(props: {
                     )
                 })}
             </div>
+
         </div>
     )
 }

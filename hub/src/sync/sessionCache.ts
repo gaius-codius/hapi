@@ -136,7 +136,8 @@ export class SessionCache {
             model: stored.model,
             effort: stored.effort,
             permissionMode: existing?.permissionMode,
-            collaborationMode: existing?.collaborationMode
+            collaborationMode: existing?.collaborationMode,
+            modelMode: existing?.modelMode
         }
 
         this.sessions.set(sessionId, session)
@@ -160,6 +161,7 @@ export class SessionCache {
         model?: string | null
         effort?: string | null
         collaborationMode?: CodexCollaborationMode
+        modelMode?: Session['modelMode']
     }): void {
         const t = clampAliveTime(payload.time)
         if (!t) return
@@ -173,6 +175,7 @@ export class SessionCache {
         const previousModel = session.model
         const previousEffort = session.effort
         const previousCollaborationMode = session.collaborationMode
+        const previousModelMode = session.modelMode
 
         session.active = true
         session.activeAt = Math.max(session.activeAt, t)
@@ -200,6 +203,9 @@ export class SessionCache {
         if (payload.collaborationMode !== undefined) {
             session.collaborationMode = payload.collaborationMode
         }
+        if (payload.modelMode !== undefined) {
+            session.modelMode = payload.modelMode
+        }
 
         const now = Date.now()
         const lastBroadcastAt = this.lastBroadcastAtBySessionId.get(session.id) ?? 0
@@ -207,6 +213,7 @@ export class SessionCache {
             || previousModel !== session.model
             || previousEffort !== session.effort
             || previousCollaborationMode !== session.collaborationMode
+            || previousModelMode !== session.modelMode
         const shouldBroadcast = (!wasActive && session.active)
             || (wasThinking !== session.thinking)
             || modeChanged
@@ -224,7 +231,8 @@ export class SessionCache {
                     permissionMode: session.permissionMode,
                     model: session.model,
                     effort: session.effort,
-                    collaborationMode: session.collaborationMode
+                    collaborationMode: session.collaborationMode,
+                    modelMode: session.modelMode
                 }
             })
         }
@@ -266,6 +274,7 @@ export class SessionCache {
             model?: string | null
             effort?: string | null
             collaborationMode?: CodexCollaborationMode
+            modelMode?: Session['modelMode']
         }
     ): void {
         const session = this.sessions.get(sessionId) ?? this.refreshSession(sessionId)
@@ -300,6 +309,9 @@ export class SessionCache {
         }
         if (config.collaborationMode !== undefined) {
             session.collaborationMode = config.collaborationMode
+        }
+        if (config.modelMode !== undefined) {
+            session.modelMode = config.modelMode
         }
 
         this.publisher.emit({ type: 'session-updated', sessionId, data: session })
