@@ -218,6 +218,19 @@ export type PushVapidPublicKeyResponse = {
     publicKey: string
 }
 
+export type SessionSortPreferenceResponse = {
+    preference: SessionSortPreference
+}
+
+export type SetSessionSortPreferencePayload = {
+    sortMode: SessionSortMode
+    manualOrder: SessionManualOrder
+    expectedVersion?: number
+}
+
+export type SetSessionSortPreferenceResult =
+    | { status: 'success'; preference: SessionSortPreference }
+    | { status: 'version-mismatch'; preference: SessionSortPreference }
 
 export type VisibilityPayload = {
     subscriptionId: string

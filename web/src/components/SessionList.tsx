@@ -1,14 +1,10 @@
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { SessionSummary } from '@/types/api'
 import type { ApiClient } from '@/api/client'
-import { getPermissionModeLabel, getPermissionModeTone, isPermissionModeAllowedForFlavor } from '@hapi/protocol'
 import { useLongPress } from '@/hooks/useLongPress'
 import { usePlatform } from '@/hooks/usePlatform'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
-import { useSortToggle } from '@/hooks/useSortToggle'
-import { SortIcon, PinIcon } from '@/components/icons/SortIcons'
 import { SessionActionMenu } from '@/components/SessionActionMenu'
-import { GroupActionMenu } from '@/components/GroupActionMenu'
 import { RenameSessionDialog } from '@/components/RenameSessionDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
@@ -19,7 +15,6 @@ import {
 } from '@/lib/agentFlavorUtils'
 import { getSessionModelLabel } from '@/lib/sessionModelLabel'
 import { useTranslation } from '@/lib/use-translation'
-import { getFlavorTextClass, PERMISSION_TONE_TEXT } from '@/lib/agentFlavorUtils'
 
 type SessionGroup = {
     key: string
@@ -47,7 +42,7 @@ export function groupSessionsByDirectory(sessions: SessionSummary[]): SessionGro
     sessions.forEach(session => {
         const path = session.metadata?.worktree?.basePath ?? session.metadata?.path ?? 'Other'
         const machineId = session.metadata?.machineId ?? null
-        const key = `${machineId ?? '__unknown__'}::${path}`
+        const key = `${machineId ?? UNKNOWN_MACHINE_ID}::${path}`
         if (!groups.has(key)) {
             groups.set(key, {
                 directory: path,
@@ -239,18 +234,6 @@ function SessionItem(props: {
     const statusDotClass = s.active
         ? (s.thinking ? 'bg-[var(--app-badge-info-text)]' : 'bg-[var(--app-badge-success-text)]')
         : 'bg-[var(--app-hint)]'
-
-    const flavor = s.metadata?.flavor?.trim() ?? null
-    const flavorTextClass = getFlavorTextClass(flavor)
-
-    const permMode = s.permissionMode
-        && s.permissionMode !== 'default'
-        && isPermissionModeAllowedForFlavor(s.permissionMode, flavor)
-        ? s.permissionMode
-        : null
-    const permLabel = permMode ? getPermissionModeLabel(permMode).toLowerCase() : null
-    const permTone = permMode ? getPermissionModeTone(permMode) : null
-    const permTextClass = permTone ? PERMISSION_TONE_TEXT[permTone] : ''
     const todoProgress = getTodoProgress(s)
     const inactiveClass = s.active ? '' : 'opacity-[0.55]'
     const metadataItems = [
@@ -316,11 +299,6 @@ function SessionItem(props: {
                 isOpen={menuOpen}
                 onClose={() => setMenuOpen(false)}
                 sessionActive={s.active}
-                manualMode={manualMode}
-                onMoveUp={onMoveUp}
-                onMoveDown={onMoveDown}
-                canMoveUp={canMoveUp}
-                canMoveDown={canMoveDown}
                 onRename={() => setRenameOpen(true)}
                 onArchive={() => setArchiveOpen(true)}
                 onDelete={() => setDeleteOpen(true)}
@@ -459,13 +437,13 @@ export function SessionList(props: {
         return !group.hasActiveSession && !hasSelectedSession
     }
 
-    const closeGroupActionMenu = () => {
-        setGroupMenuOpen(false)
+    const toggleGroup = (groupKey: string, isCollapsed: boolean) => {
+        setCollapseOverrides(prev => {
+            const next = new Map(prev)
+            next.set(groupKey, !isCollapsed)
+            return next
+        })
     }
-
-    const groupMenuIndex = groupMenuKey ? orderedGroups.findIndex((group) => group.key === groupMenuKey) : -1
-    const canMoveGroupUp = groupMenuIndex > 0
-    const canMoveGroupDown = groupMenuIndex >= 0 && groupMenuIndex < orderedGroups.length - 1
 
     const resolveMachineLabel = (machineId: string | null): string => {
         if (machineId && machineLabelsById[machineId]) {
@@ -476,20 +454,16 @@ export function SessionList(props: {
         }
         return t('machine.unknown')
     }
-    const isGroupCollapsed = (group: SessionGroup): boolean => {
-        const override = collapseOverrides.get(group.key)
-        if (override !== undefined) return override
-        return !group.hasActiveSession
-    }
 
-    const toggleGroup = (groupKey: string, isCollapsed: boolean) => {
+    useEffect(() => {
+        if (!selectedSessionId) return
         setCollapseOverrides(prev => {
             const group = displayGroups.find(g =>
                 g.sessions.some(s => s.id === selectedSessionId)
             )
             if (!group || !prev.has(group.key) || !prev.get(group.key)) return prev
             const next = new Map(prev)
-            next.set(groupKey, !isCollapsed)
+            next.delete(group.key)
             return next
         })
     }, [selectedSessionId, displayGroups])
@@ -531,7 +505,7 @@ export function SessionList(props: {
             <div className="flex flex-col">
                 {displayGroups.map((group) => {
                     const isCollapsed = isGroupCollapsed(group)
-                    const groupMachineLabel = resolveMachineLabel(group.machineId)
+                    const machineLabel = resolveMachineLabel(group.machineId)
                     return (
                         <div key={group.key} className="mt-2 first:mt-0">
                             <GroupHeader
@@ -542,7 +516,7 @@ export function SessionList(props: {
                             />
                             {!isCollapsed ? (
                                 <div className="flex flex-col divide-y divide-[var(--app-divider)] border-b border-[var(--app-divider)] border-l border-l-[var(--app-divider)]">
-                                    {group.sessions.map((s, index) => (
+                                    {group.sessions.map((s) => (
                                         <SessionItem
                                             key={s.id}
                                             session={s}

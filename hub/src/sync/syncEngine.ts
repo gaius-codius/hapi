@@ -12,6 +12,9 @@ import type {
     DecryptedMessage,
     PermissionMode,
     Session,
+    SessionManualOrder,
+    SessionSortMode,
+    SessionSortPreference,
     SyncEvent
 } from '@hapi/protocol/types'
 import type { Server } from 'socket.io'
@@ -48,6 +51,10 @@ export type ResumeSessionResult =
     | { type: 'success'; sessionId: string }
     | { type: 'error'; message: string; code: 'session_not_found' | 'access_denied' | 'no_machine_online' | 'resume_unavailable' | 'resume_failed' }
 
+export type SetSessionSortPreferenceResult =
+    | { result: 'success'; preference: SessionSortPreference }
+    | { result: 'version-mismatch'; preference: SessionSortPreference }
+    | { result: 'error' }
 
 export class SyncEngine {
     private readonly store: Store
@@ -106,6 +113,62 @@ export class SyncEngine {
         return this.sessionCache.getSessionsByNamespace(namespace)
     }
 
+    getSessionSortPreference(userId: number, namespace: string): SessionSortPreference {
+        const preference = this.store.sessionSortPreferences.getByUser(userId, namespace)
+        return {
+            sortMode: preference.sortMode,
+            manualOrder: preference.manualOrder,
+            version: preference.version,
+            updatedAt: preference.updatedAt
+        }
+    }
+
+    setSessionSortPreference(
+        userId: number,
+        namespace: string,
+        input: {
+            sortMode: SessionSortMode
+            manualOrder: SessionManualOrder
+            expectedVersion?: number
+        }
+    ): SetSessionSortPreferenceResult {
+        const result = this.store.sessionSortPreferences.upsertByUser(
+            userId,
+            namespace,
+            {
+                sortMode: input.sortMode,
+                manualOrder: input.manualOrder
+            },
+            input.expectedVersion
+        )
+
+        if (result.result === 'error') {
+            return { result: 'error' }
+        }
+
+        const preference: SessionSortPreference = {
+            sortMode: result.preference.sortMode,
+            manualOrder: result.preference.manualOrder,
+            version: result.preference.version,
+            updatedAt: result.preference.updatedAt
+        }
+
+        if (result.result === 'success') {
+            this.eventPublisher.emit({
+                type: 'session-sort-preference-updated',
+                namespace,
+                data: {
+                    userId,
+                    version: preference.version
+                }
+            })
+        }
+
+        return {
+            result: result.result,
+            preference
+        }
+    }
 
     getSession(sessionId: string): Session | undefined {
         return this.sessionCache.getSession(sessionId) ?? this.sessionCache.refreshSession(sessionId) ?? undefined
@@ -307,9 +370,6 @@ export class SyncEngine {
             modelMode?: Session['modelMode']
         }
     ): Promise<void> {
-        // modelMode is currently hub-managed metadata only. CLI agents do not yet
-        // accept it through set-session-config RPC, so we apply the validated value
-        // locally after the agent acknowledges the rest of the config.
         const rpcConfig = {
             permissionMode: config.permissionMode,
             model: config.model,
