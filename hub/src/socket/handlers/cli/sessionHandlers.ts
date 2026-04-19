@@ -1,7 +1,8 @@
 import type { ClientToServerEvents } from '@hapi/protocol'
+import { CodexCollaborationModeSchema, ModelModeSchema, PermissionModeSchema } from '@hapi/protocol/schemas'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
-import type { CodexCollaborationMode, PermissionMode } from '@hapi/protocol/types'
+import type { CodexCollaborationMode, ModelMode, PermissionMode } from '@hapi/protocol/types'
 import type { Store, StoredSession } from '../../../store'
 import type { SyncEvent } from '../../../sync/syncEngine'
 import { extractTodoWriteTodosFromMessageContent } from '../../../sync/todos'
@@ -18,6 +19,7 @@ type SessionAlivePayload = {
     model?: string | null
     effort?: string | null
     collaborationMode?: CodexCollaborationMode
+    modelMode?: ModelMode
 }
 
 type SessionEndPayload = {
@@ -48,6 +50,18 @@ const updateStateSchema = z.object({
     sid: z.string(),
     expectedVersion: z.number().int(),
     agentState: z.unknown().nullable()
+})
+
+const sessionAliveSchema = z.object({
+    sid: z.string().min(1).max(128),
+    time: z.number().finite().nonnegative(),
+    thinking: z.boolean().optional(),
+    mode: z.enum(['local', 'remote']).optional(),
+    permissionMode: PermissionModeSchema.optional(),
+    model: z.string().max(256).nullable().optional(),
+    effort: z.string().max(64).nullable().optional(),
+    collaborationMode: CodexCollaborationModeSchema.optional(),
+    modelMode: ModelModeSchema.optional()
 })
 
 export type SessionHandlersDeps = {
@@ -235,15 +249,17 @@ export function registerSessionHandlers(socket: CliSocketWithData, deps: Session
     socket.on('update-state', handleUpdateState)
 
     socket.on('session-alive', (data: SessionAlivePayload) => {
-        if (!data || typeof data.sid !== 'string' || typeof data.time !== 'number') {
+        const parsed = sessionAliveSchema.safeParse(data)
+        if (!parsed.success) {
             return
         }
-        const sessionAccess = resolveSessionAccess(data.sid)
+        const payload = parsed.data
+        const sessionAccess = resolveSessionAccess(payload.sid)
         if (!sessionAccess.ok) {
-            emitAccessError('session', data.sid, sessionAccess.reason)
+            emitAccessError('session', payload.sid, sessionAccess.reason)
             return
         }
-        onSessionAlive?.(data)
+        onSessionAlive?.(payload)
     })
 
     socket.on('session-end', (data: SessionEndPayload) => {

@@ -12,9 +12,8 @@ import {
     useParams,
 } from '@tanstack/react-router'
 import { App } from '@/App'
-import { SortIcon, PinIcon } from '@/components/icons/SortIcons'
 import { SessionChat } from '@/components/SessionChat'
-import { SessionList, groupSessionsByDirectory } from '@/components/SessionList'
+import { SessionList } from '@/components/SessionList'
 import { NewSession } from '@/components/NewSession'
 import { LoadingState } from '@/components/LoadingState'
 import { useAppContext } from '@/lib/app-context'
@@ -27,7 +26,6 @@ import { useSessions } from '@/hooks/queries/useSessions'
 import { useSlashCommands } from '@/hooks/queries/useSlashCommands'
 import { useSkills } from '@/hooks/queries/useSkills'
 import { useSendMessage } from '@/hooks/mutations/useSendMessage'
-import { useSortToggle } from '@/hooks/useSortToggle'
 import { queryKeys } from '@/lib/query-keys'
 import { useToast } from '@/lib/toast-context'
 import { useTranslation } from '@/lib/use-translation'
@@ -116,13 +114,11 @@ function SessionsPage() {
         void refetch()
     }, [refetch])
 
-    const projectCount = new Set(sessions.map(s => {
+    const projectCount = useMemo(() => new Set(sessions.map(s => {
         const path = s.metadata?.worktree?.basePath ?? s.metadata?.path ?? 'Other'
         const machineId = s.metadata?.machineId ?? '__unknown__'
         return `${machineId}::${path}`
-    })).size
-    const groups = useMemo(() => groupSessionsByDirectory(sessions), [sessions])
-    const { sortMode, isSortPreferencePending, toggleSortMode } = useSortToggle(api, groups)
+    })).size, [sessions])
     const machineLabelsById = useMemo(() => {
         const labels: Record<string, string> = {}
         for (const machine of machines) {
@@ -152,18 +148,6 @@ function SessionsPage() {
                                 title={t('settings.title')}
                             >
                                 <SettingsIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={toggleSortMode}
-                                className="p-1.5 rounded-full text-[var(--app-hint)] hover:text-[var(--app-link)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={t(sortMode === 'auto' ? 'sessions.sort.auto' : 'sessions.sort.manual')}
-                                aria-pressed={sortMode === 'manual'}
-                                disabled={isSortPreferencePending}
-                            >
-                                {sortMode === 'auto'
-                                    ? <SortIcon className="h-4 w-4" />
-                                    : <PinIcon className="h-4 w-4" />}
                             </button>
                             <button
                                 type="button"
@@ -388,7 +372,7 @@ function NewSessionPage() {
     }, [navigate, queryClient])
 
     return (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-bg)] p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
                 {!isTelegramApp() && (
                     <button
@@ -402,19 +386,21 @@ function NewSessionPage() {
                 <div className="flex-1 font-semibold">{t('newSession.title')}</div>
             </div>
 
-            {machinesError ? (
-                <div className="p-3 text-sm text-red-600">
-                    {machinesError}
-                </div>
-            ) : null}
+            <div className="app-scroll-y flex-1 min-h-0">
+                {machinesError ? (
+                    <div className="p-3 text-sm text-red-600">
+                        {machinesError}
+                    </div>
+                ) : null}
 
-            <NewSession
-                api={api}
-                machines={machines}
-                isLoading={machinesLoading}
-                onCancel={handleCancel}
-                onSuccess={handleSuccess}
-            />
+                <NewSession
+                    api={api}
+                    machines={machines}
+                    isLoading={machinesLoading}
+                    onCancel={handleCancel}
+                    onSuccess={handleSuccess}
+                />
+            </div>
         </div>
     )
 }

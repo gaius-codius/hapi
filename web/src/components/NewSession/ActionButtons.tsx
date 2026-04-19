@@ -13,7 +13,7 @@ export function ActionButtons(props: {
     const { t } = useTranslation()
 
     return (
-        <div className="flex gap-2 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        <div className="sticky bottom-0 z-10 flex gap-2 border-t border-[var(--app-divider)] bg-[var(--app-bg)] px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
             <Button
                 variant="secondary"
                 onClick={props.onCancel}

@@ -1,206 +1,136 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import type { SessionSummary } from '@/types/api'
-import { I18nProvider } from '@/lib/i18n-context'
-import { SessionList } from './SessionList'
-import { useSessionSortPreference } from '@/hooks/queries/useSessionSortPreference'
-import { useSessionSortPreferenceMutation } from '@/hooks/mutations/useSessionSortPreference'
+import { UNKNOWN_MACHINE_ID, groupSessionsByDirectory } from './SessionList'
 
-vi.mock('@/hooks/useLongPress', () => ({
-    useLongPress: ({ onClick }: { onClick: () => void }) => ({ onClick })
-}))
-
-vi.mock('@/hooks/usePlatform', () => ({
-    usePlatform: () => ({ haptic: { impact: vi.fn() } })
-}))
-
-vi.mock('@/hooks/mutations/useSessionActions', () => ({
-    useSessionActions: () => ({
-        archiveSession: vi.fn(),
-        renameSession: vi.fn(),
-        deleteSession: vi.fn(),
-        isPending: false
-    })
-}))
-
-vi.mock('@/hooks/queries/useSessionSortPreference', () => ({
-    useSessionSortPreference: vi.fn(() => ({
-        preference: {
-            sortMode: 'auto',
-            manualOrder: {
-                groupOrder: [],
-                sessionOrder: {}
-            },
-            version: 1,
-            updatedAt: 0
-        }
-    }))
-}))
-
-vi.mock('@/hooks/mutations/useSessionSortPreference', () => ({
-    useSessionSortPreferenceMutation: vi.fn(() => ({
-        setSessionSortPreference: vi.fn(),
-        isPending: false
-    }))
-}))
-
-vi.mock('@/components/SessionActionMenu', () => ({
-    SessionActionMenu: () => null
-}))
-
-vi.mock('@/components/RenameSessionDialog', () => ({
-    RenameSessionDialog: () => null
-}))
-
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-    ConfirmDialog: () => null
-}))
-
-function makeSession(overrides: Partial<SessionSummary>): SessionSummary {
-    const id = overrides.id ?? 'session-1'
+function makeSession(overrides: Partial<SessionSummary> = {}): SessionSummary {
     return {
-        id,
-        active: overrides.active ?? true,
-        thinking: overrides.thinking ?? false,
-        activeAt: overrides.activeAt ?? 1,
-        updatedAt: overrides.updatedAt ?? 1,
-        metadata: overrides.metadata ?? {
-            name: id,
-            path: '/repo/app',
-            machineId: 'machine-1',
-            flavor: 'claude',
-            summary: { text: id }
+        id: 'session-1',
+        active: false,
+        thinking: false,
+        activeAt: 0,
+        updatedAt: 0,
+        metadata: {
+            path: '/workspace/project',
+            machineId: 'machine-a'
         },
-        todoProgress: overrides.todoProgress ?? null,
-        pendingRequestsCount: overrides.pendingRequestsCount ?? 0,
-        model: overrides.model ?? null,
-        effort: overrides.effort ?? null,
-        permissionMode: overrides.permissionMode,
-        modelMode: overrides.modelMode
+        todoProgress: null,
+        pendingRequestsCount: 0,
+        model: null,
+        effort: null,
+        ...overrides
     }
 }
 
-function renderList(
-    sessions: SessionSummary[],
-    machineLabelsById?: Record<string, string>,
-    options?: { renderHeader?: boolean }
-) {
-    return render(
-        <I18nProvider>
-            <SessionList
-                sessions={sessions}
-                onSelect={vi.fn()}
-                onNewSession={vi.fn()}
-                onRefresh={vi.fn()}
-                isLoading={false}
-                renderHeader={options?.renderHeader ?? false}
-                api={null}
-                machineLabelsById={machineLabelsById}
-            />
-        </I18nProvider>
-    )
-}
+describe('groupSessionsByDirectory', () => {
+    it('groups by machine and directory', () => {
+        const groups = groupSessionsByDirectory([
+            makeSession({ id: 'session-a', metadata: { path: '/workspace/project', machineId: 'machine-a' } }),
+            makeSession({ id: 'session-b', metadata: { path: '/workspace/project', machineId: 'machine-b' } })
+        ])
 
-describe('SessionList', () => {
-    it('shows sort toggle title in header', () => {
-        renderList([], {}, { renderHeader: true })
-
-        expect(screen.getByTitle('Sort: automatic')).toBeInTheDocument()
+        expect(groups).toHaveLength(2)
+        expect(groups.map(group => group.key)).toEqual([
+            'machine-a::/workspace/project',
+            'machine-b::/workspace/project'
+        ])
     })
 
-    it('groups sessions by machine and directory', () => {
-        const sessions = [
+    it('sorts active sessions before inactive sessions within a group', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({ id: 'inactive', active: false, updatedAt: 20 }),
+            makeSession({ id: 'active', active: true, updatedAt: 10 })
+        ])
+
+        expect(group.sessions.map(session => session.id)).toEqual(['active', 'inactive'])
+    })
+
+    it('ranks active sessions with pending requests ahead of other active sessions', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({ id: 'active-no-pending', active: true, updatedAt: 30, pendingRequestsCount: 0 }),
+            makeSession({ id: 'active-pending', active: true, updatedAt: 10, pendingRequestsCount: 2 })
+        ])
+
+        expect(group.sessions.map(session => session.id)).toEqual(['active-pending', 'active-no-pending'])
+    })
+
+    it('sorts groups with active sessions ahead of inactive groups', () => {
+        const groups = groupSessionsByDirectory([
             makeSession({
-                id: 's1',
-                metadata: { path: '/repo/app', machineId: 'm1', flavor: 'claude' },
-                updatedAt: 100
+                id: 'inactive-group',
+                updatedAt: 100,
+                metadata: { path: '/workspace/inactive', machineId: 'machine-a' }
             }),
             makeSession({
-                id: 's2',
-                metadata: { path: '/repo/app', machineId: 'm2', flavor: 'claude' },
-                updatedAt: 90
+                id: 'active-group',
+                active: true,
+                updatedAt: 10,
+                metadata: { path: '/workspace/active', machineId: 'machine-a' }
             })
-        ]
+        ])
 
-        renderList(sessions, { m1: 'Laptop', m2: 'Server' })
-
-        expect(screen.getByText('Laptop')).toBeInTheDocument()
-        expect(screen.getByText('Server')).toBeInTheDocument()
+        expect(groups.map(group => group.directory)).toEqual([
+            '/workspace/active',
+            '/workspace/inactive'
+        ])
     })
 
-    it('shows permission badge only when mode allowed for flavor', () => {
-        const sessions = [
+    it('groups worktree sessions by basePath', () => {
+        const [group] = groupSessionsByDirectory([
             makeSession({
-                id: 'claude-plan',
-                metadata: { path: '/repo/claude', machineId: 'm1', flavor: 'claude' },
-                permissionMode: 'plan'
-            }),
-            makeSession({
-                id: 'codex-plan',
-                metadata: { path: '/repo/codex', machineId: 'm1', flavor: 'codex' },
-                permissionMode: 'plan'
-            })
-        ]
-
-        renderList(sessions, { m1: 'Laptop' })
-
-        expect(screen.getByText('plan mode')).toBeInTheDocument()
-        const codexRow = screen.getAllByText('codex')[0]?.closest('button')
-        expect(codexRow).toBeTruthy()
-        expect(codexRow?.textContent?.toLowerCase()).not.toContain('plan mode')
-    })
-
-    it('renders sessions using backend manual order', () => {
-        vi.mocked(useSessionSortPreference).mockReturnValue({
-            preference: {
-                sortMode: 'manual',
-                manualOrder: {
-                    groupOrder: ['m1::/repo/app'],
-                    sessionOrder: {
-                        'm1::/repo/app': ['s2', 's1']
+                id: 'worktree-a',
+                metadata: {
+                    path: '/workspace/project-worktrees/feature-a',
+                    machineId: 'machine-a',
+                    worktree: {
+                        branch: 'feature-a',
+                        basePath: '/workspace/project',
+                        name: 'feature-a'
                     }
-                },
-                version: 3,
-                updatedAt: 100
-            },
-            isLoading: false,
-            error: null,
-            refetch: vi.fn()
-        })
-        vi.mocked(useSessionSortPreferenceMutation).mockReturnValue({
-            setSessionSortPreference: vi.fn(),
-            isPending: false
-        })
-
-        const sessions = [
-            makeSession({
-                id: 's1',
-                metadata: {
-                    path: '/repo/app',
-                    machineId: 'm1',
-                    flavor: 'claude',
-                    name: 'Alpha',
-                    summary: { text: 'Alpha summary' }
-                },
-                updatedAt: 200
+                }
             }),
             makeSession({
-                id: 's2',
+                id: 'worktree-b',
                 metadata: {
-                    path: '/repo/app',
-                    machineId: 'm1',
-                    flavor: 'claude',
-                    name: 'Beta',
-                    summary: { text: 'Beta summary' }
-                },
-                updatedAt: 100
+                    path: '/workspace/project-worktrees/feature-b',
+                    machineId: 'machine-a',
+                    worktree: {
+                        branch: 'feature-b',
+                        basePath: '/workspace/project',
+                        name: 'feature-b'
+                    }
+                }
             })
-        ]
+        ])
 
-        const { container } = renderList(sessions, { m1: 'Laptop' })
+        expect(group.directory).toBe('/workspace/project')
+        expect(group.key).toBe('machine-a::/workspace/project')
+        expect(group.sessions).toHaveLength(2)
+    })
 
-        const items = Array.from(container.querySelectorAll<HTMLButtonElement>('.session-list-item'))
-        expect(items[0]?.textContent).toContain('Beta')
-        expect(items[1]?.textContent).toContain('Alpha')
+    it('uses the Other fallback when path metadata is missing', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({
+                id: 'no-path',
+                metadata: {
+                    machineId: undefined
+                } as SessionSummary['metadata']
+            })
+        ])
+
+        expect(group.directory).toBe('Other')
+        expect(group.key).toBe(`${UNKNOWN_MACHINE_ID}::Other`)
+    })
+
+    it('derives compact display names from the directory path', () => {
+        const [group] = groupSessionsByDirectory([
+            makeSession({
+                metadata: {
+                    path: '/Users/dev/projects/hapi',
+                    machineId: 'machine-a'
+                }
+            })
+        ])
+
+        expect(group.displayName).toBe('projects/hapi')
     })
 })

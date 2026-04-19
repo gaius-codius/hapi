@@ -11,7 +11,6 @@
         "preview": "vite preview",
         "test": "vitest run",
         "test:e2e": "BUN_BIN=${BUN_BIN:-$(command -v bun || echo $HOME/.bun/bin/bun)} playwright test --config=playwright.config.ts",
-        "test:e2e:session-sort": "BUN_BIN=${BUN_BIN:-$(command -v bun || echo $HOME/.bun/bin/bun)} playwright test --config=playwright.config.ts --grep \"session sort\"",
         "test:e2e:install": "playwright install chromium"
     },
     "dependencies": {
